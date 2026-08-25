@@ -1,0 +1,36 @@
+name: "casumina_csm"
+version: "1.0.0"
+config-version: 2
+
+profile: casumina_csm
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  casumina_csm:
+    staging:
+      +materialized: view
+      +schema: staging_csm
+    marts:
+      +materialized: table
+      +schema: csm
+
+vars:
+  # Source CSM database (read-only via postgres_fdw wrapper `csm_src`)
+  csm_source_database: casumina_db
+  csm_source_schema: public
+  # Target schema inside the configured connection (casumina_prod)
+  csm_mart_schema: csm
+
+seeds:
+  casumina_csm:
+    +schema: seeds_csm

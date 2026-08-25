@@ -1,0 +1,33 @@
+version: 2
+
+sources:
+  - name: csm
+    description: CSM operational-source tables exposed in casumina_prod via postgres_fdw.
+    schema: public_csm_src
+    tables:
+      - name: source_code
+      - name: item_category
+      - name: item
+      - name: product_group
+      - name: customer
+      - name: responsibility_center
+      - name: location
+      - name: customer_template
+      - name: customer_posting_group
+      - name: department
+      - name: item_subgroup_1
+      - name: manufacturer_costing
+      - name: manufacturer_material_costing
+      - name: manufacturer_profit
+      - name: sale_invoice
+      - name: service_invoice
+      - name: customer_profit
+      - name: production_bom_line
+      - name: production_entry
+      - name: material_entry
+      - name: production_planning
+      - name: customer_balance
+      - name: balance_account
+      - name: business_planning
+      - name: business_planning_actual
+      - name: company_profit
