@@ -1,0 +1,83 @@
+version: 2
+
+models:
+  - name: dim_csm_factory
+    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+    columns:
+      - name: factory_code
+        tests: [not_null, unique]
+  - name: dim_csm_category
+    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+    columns:
+      - name: category_code
+        tests: [not_null, unique]
+  - name: dim_csm_product
+    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+    columns:
+      - name: product_code
+        tests: [not_null, unique]
+  - name: dim_csm_customer
+    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+    columns:
+      - name: customer_code
+        tests: [not_null, unique]
+  - name: dim_csm_location
+    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+    columns:
+      - name: location_code
+        tests: [not_null, unique]
+  - name: dim_csm_responsibility_center
+    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+    columns:
+      - name: responsibility_center
+        tests: [not_null, unique]
+  - name: dim_csm_customer_template
+    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+    columns:
+      - name: customer_template_code
+        tests: [not_null, unique]
+  - name: dim_csm_customer_posting_group
+    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+    columns:
+      - name: posting_group_code
+        tests: [not_null, unique]
+  - name: dim_csm_department
+    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+    columns:
+      - name: department_code
+        tests: [not_null, unique]
+  - name: dim_csm_item_subgroup
+    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+    columns:
+      - name: subgroup_code
+        tests: [not_null, unique]
+  - name: fact_csm_product_cost
+    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+  - name: fact_csm_material_cost
+    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+  - name: fact_csm_product_profit
+    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+  - name: fact_csm_sales
+    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+  - name: fact_csm_service_invoice
+    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+  - name: fact_csm_customer_profit
+    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+  - name: fact_csm_bom
+    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+  - name: fact_csm_production
+    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+  - name: fact_csm_material
+    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+  - name: fact_csm_production_plan
+    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+  - name: fact_csm_customer_balance
+    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+  - name: fact_csm_account_balance
+    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+  - name: fact_csm_fg_inventory
+    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+  - name: fact_csm_business_planning
+    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+  - name: company_profit_flat
+    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
