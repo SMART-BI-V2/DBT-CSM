@@ -34,3 +34,9 @@ vars:
 seeds:
   casumina_csm:
     +schema: seeds_csm
+    seed_department:
+      +column_types:
+        RowID: integer
+        Code: text
+        Description: text
+        SourceCode: text
