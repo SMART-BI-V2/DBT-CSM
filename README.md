@@ -29,6 +29,7 @@ scripts/dbt_doris.sh build --vars '{csm_source_schema: tmp_src}'   # đọc ngu�
   khoá chống chạy chồng, log `logs/dbt_YYYYMMDD.log`, tự dựng lại một lần nếu nguồn bị ghi chen ngang.
 - Chống đọc dữ liệu dở dang: đối tác xoá + nạp lại tháng hiện tại khoảng 18 phút/lần ⇒ trước khi dựng, dbt chờ
   `raw_stage` không bị ghi ≥ 2 phút; sau khi dựng kiểm lại nguồn không đổi (`macros/csm_source_guard.sql`).
+- Bảng cũ / bảng tạm của dbt xoá bằng `FORCE` (không dồn ~1.900 bảng/ngày vào thùng rác Doris).
 - Một lần dựng toàn bộ ~30 giây (thử tải: ~12 triệu dòng / 24 năm 41 giây; ×60 khối lượng 73 giây); mỗi bảng dựng vào bảng tạm rồi hoán đổi nguyên tử —
   BI không bao giờ đọc bảng dở dang.
 
@@ -45,7 +46,8 @@ scripts/dbt_doris.sh build --vars '{csm_source_schema: tmp_src}'   # đọc ngu�
 | Độ phủ dữ liệu | `meta_csm_data_coverage`: mỗi bảng fact có số từ kỳ nào tới kỳ nào, kỳ cuối đã đủ tháng chưa. Tháng hiện tại là số luỹ kế (đối tác nạp lại nhiều lần/ngày); giá thành, lãi gộp, BOM chỉ có khi tháng đã khoá sổ. |
 | Lãi gộp | `fact_csm_product_profit` ERP ghi gần hết ở đơn vị 01 (Văn phòng) — không so lãi giữa xí nghiệp. |
 
-Từ điển đầy đủ từng bảng / cột: `models/marts/csm/_csm__models.yml`.
+Từ điển đầy đủ từng bảng / cột: `models/marts/csm/_csm__models.yml` — dbt ghi luôn vào COMMENT bảng/cột của
+Doris (`persist_docs`), nên SmartBI / AI đọc được nghĩa cột ngay từ schema.
 
 ## Khác bản PostgreSQL cũ (sửa lỗi nghiệp vụ)
 

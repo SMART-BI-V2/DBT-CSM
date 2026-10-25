@@ -22,6 +22,11 @@ models:
     marts:
       +materialized: table
       +buckets: 1
+      # Mô tả tiếng Việt (models/marts/csm/_csm__models.yml) ghi vào COMMENT bảng/cột của Doris
+      # ⇒ SmartBI / AI / công cụ BI đọc được nghĩa từng cột ngay từ schema.
+      +persist_docs:
+        relation: true
+        columns: true
       # Doris 1 BE ⇒ 1 bản sao (fe.conf force_olap_table_replication_num=1)
       +properties:
         replication_num: "1"

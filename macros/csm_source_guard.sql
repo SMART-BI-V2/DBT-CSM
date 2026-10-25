@@ -33,7 +33,7 @@
     {%- if idle < quiet -%}
       {{ exceptions.raise_compiler_error("Nguồn " ~ var('csm_source_schema') ~ " bị ghi liên tục quá " ~ max_wait ~ "s — bỏ lần dựng này") }}
     {%- endif -%}
-    {%- do run_query("drop table if exists " ~ csm_guard_table()) -%}
+    {%- do run_query("drop table if exists " ~ csm_guard_table() ~ " force") -%}
     {%- do run_query("create table " ~ csm_guard_table() ~ " distributed by random buckets 1 properties('replication_num'='1') as select cast('" ~ ns.row[0] ~ "' as datetime) as source_last_write") -%}
   {%- endif -%}
   select 1
@@ -43,7 +43,7 @@
   {%- if execute and flags.WHICH in ('run', 'build') -%}
     {%- set before = run_query("select cast(source_last_write as string) from " ~ csm_guard_table()).rows[0][0] -%}
     {%- set now_row = csm_source_last_write() -%}
-    {%- do run_query("drop table if exists " ~ csm_guard_table()) -%}
+    {%- do run_query("drop table if exists " ~ csm_guard_table() ~ " force") -%}
     {%- if (now_row[0] | string) != (before | string) -%}
       {{ exceptions.raise_compiler_error("Nguồn " ~ var('csm_source_schema') ~ " bị ghi trong lúc dựng (" ~ before ~ " → " ~ now_row[0] ~ ") — mart có thể lệch kỳ, cần dựng lại") }}
     {%- endif -%}
