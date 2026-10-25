@@ -2,8 +2,8 @@
 # Dựng lại mart CSM trên Doris theo lịch: bọc scripts/dbt_doris.sh với khoá chống chạy chồng,
 # log theo ngày và tự xoá log cũ. Biến môi trường (DORIS_PASSWORD, DBT_NETWORK…) xem dbt_doris.sh.
 #
-# Cài (mỗi giờ, phút 15):
-#   15 * * * * DBT_NETWORK=host /đường/dẫn/DBT-CSM/scripts/dbt_cron.sh >/dev/null 2>&1
+# Cài (mỗi 20 phút — role `dbt` của ansible-csm-data cài sẵn trên máy DATA .197):
+#   */20 * * * * DBT_NETWORK=host /đường/dẫn/DBT-CSM/scripts/dbt_cron.sh >/dev/null 2>&1
 #
 # Exit codes:
 #   0  build + test đạt, hoặc đang có lần chạy khác giữ khoá

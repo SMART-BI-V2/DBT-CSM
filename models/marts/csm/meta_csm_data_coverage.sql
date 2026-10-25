@@ -3,6 +3,9 @@
 -- Độ phủ dữ liệu từng bảng fact — để AI / người dùng biết kỳ nào có số, kỳ cuối đã đủ tháng chưa.
 -- Đối tác nạp lại tháng hiện tại nhiều lần/ngày ⇒ tháng hiện tại là số LUỸ KẾ đến last_posting_date.
 -- Các bảng khoá sổ tháng (giá thành, lãi, BOM…) chỉ có số khi tháng đã đóng.
+-- [SỬA 10/2026] nguồn chỉ ghi theo tháng (material_entry, production_entry, production_planning: mọi dòng
+-- PostingDate = ngày 1) ⇒ max(PostingDate) luôn là ngày 1 của tháng cuối. last_posting_date của các bảng
+-- này = ngày ERP trích số tháng cuối (SystemDate), chặn ở cuối tháng — xem macro csm_monthly_as_of.
 with c as (
   select 'fact_csm_sales' as table_name, 'Doanh thu bán hàng (hoá đơn)' as description,
     (select min(period_from) from {{ ref('fact_csm_sales') }}) as period_first,
@@ -49,25 +52,25 @@ with c as (
   select 'fact_csm_material' as table_name, 'Nhập – xuất – tồn nguyên vật liệu' as description,
     (select min(period_date) from {{ ref('fact_csm_material') }}) as period_first,
     (select max(period_date) from {{ ref('fact_csm_material') }}) as period_last,
-    (select CAST(max(`PostingDate`) AS DATE) from {{ ref('stg_csm__material_entry') }}) as last_posting_date,
+    {{ csm_monthly_as_of(ref('stg_csm__material_entry')) }} as last_posting_date,
     (select count(*) from {{ ref('fact_csm_material') }}) as row_count
   union all
   select 'fact_csm_fg_inventory' as table_name, 'Nhập – xuất – tồn thành phẩm' as description,
     (select min(period_date) from {{ ref('fact_csm_fg_inventory') }}) as period_first,
     (select max(period_date) from {{ ref('fact_csm_fg_inventory') }}) as period_last,
-    (select CAST(max(`PostingDate`) AS DATE) from {{ ref('stg_csm__production_entry') }}) as last_posting_date,
+    {{ csm_monthly_as_of(ref('stg_csm__production_entry')) }} as last_posting_date,
     (select count(*) from {{ ref('fact_csm_fg_inventory') }}) as row_count
   union all
   select 'fact_csm_production' as table_name, 'Sản lượng nhập – xuất – tồn thành phẩm' as description,
     (select min(period_date) from {{ ref('fact_csm_production') }}) as period_first,
     (select max(period_date) from {{ ref('fact_csm_production') }}) as period_last,
-    (select CAST(max(`PostingDate`) AS DATE) from {{ ref('stg_csm__production_entry') }}) as last_posting_date,
+    {{ csm_monthly_as_of(ref('stg_csm__production_entry')) }} as last_posting_date,
     (select count(*) from {{ ref('fact_csm_production') }}) as row_count
   union all
   select 'fact_csm_production_plan' as table_name, 'Kế hoạch sản xuất / tiêu thụ' as description,
     (select min(period_date) from {{ ref('fact_csm_production_plan') }}) as period_first,
     (select max(period_date) from {{ ref('fact_csm_production_plan') }}) as period_last,
-    (select CAST(max(`PostingDate`) AS DATE) from {{ ref('stg_csm__production_planning') }}) as last_posting_date,
+    {{ csm_monthly_as_of(ref('stg_csm__production_planning')) }} as last_posting_date,
     (select count(*) from {{ ref('fact_csm_production_plan') }}) as row_count
   union all
   select 'fact_csm_customer_balance' as table_name, 'Công nợ phải thu' as description,

@@ -29,7 +29,10 @@ scripts/dbt_doris.sh build --vars '{csm_source_schema: tmp_src}'   # đọc ngu�
   khoá chống chạy chồng, log `logs/dbt_YYYYMMDD.log`, tự dựng lại một lần nếu nguồn bị ghi chen ngang.
 - Chống đọc dữ liệu dở dang: đối tác xoá + nạp lại tháng hiện tại khoảng 18 phút/lần ⇒ trước khi dựng, dbt chờ
   `raw_stage` không bị ghi ≥ 2 phút; sau khi dựng kiểm lại nguồn không đổi (`macros/csm_source_guard.sql`).
-- Bảng cũ / bảng tạm của dbt xoá bằng `FORCE` (không dồn ~1.900 bảng/ngày vào thùng rác Doris).
+- Bảng tạm / bảng cũ dbt tự xoá bằng `DROP … FORCE` (không vào thùng rác Doris). Riêng bước hoán đổi nguyên tử
+  (`ALTER TABLE … REPLACE WITH TABLE … PROPERTIES('swap'='false')` của dbt-doris) vẫn đẩy bảng cũ bị thay vào
+  thùng rác: mỗi bảng mart một bản cũ / lần dựng, Doris tự xoá sau `catalog_trash_expire_second` (prod: 86400 s =
+  1 ngày) ⇒ thùng rác luôn giữ khoảng 26 bảng × 72 lần/ngày ≈ 1.900 bản cũ, nhưng có giới hạn, không tăng mãi.
 - Một lần dựng toàn bộ ~30 giây (thử tải: ~12 triệu dòng / 24 năm 41 giây; ×60 khối lượng 73 giây); mỗi bảng dựng vào bảng tạm rồi hoán đổi nguyên tử —
   BI không bao giờ đọc bảng dở dang.
 
@@ -44,7 +47,8 @@ scripts/dbt_doris.sh build --vars '{csm_source_schema: tmp_src}'   # đọc ngu�
 | Doanh thu | `fact_csm_sales.amount` (đã gồm dòng điều chỉnh âm) + `fact_csm_service_invoice.amount`. `doc_type` là mã ERP (0, 5 bán; 12 điều chỉnh), không phải inland/export. |
 | Tồn kho / công nợ | Có đủ mọi tháng ⇒ `WHERE period_date = …` ra toàn bộ tồn / dư nợ của tháng đó. |
 | Độ phủ dữ liệu | `meta_csm_data_coverage`: mỗi bảng fact có số từ kỳ nào tới kỳ nào, kỳ cuối đã đủ tháng chưa. Tháng hiện tại là số luỹ kế (đối tác nạp lại nhiều lần/ngày); giá thành, lãi gộp, BOM chỉ có khi tháng đã khoá sổ. |
-| Lãi gộp | `fact_csm_product_profit` ERP ghi gần hết ở đơn vị 01 (Văn phòng) — không so lãi giữa xí nghiệp. |
+| Số tạm | `fact_csm_material`, `fact_csm_fg_inventory`, `fact_csm_production`: `is_provisional = 1` cho tháng chưa khoá sổ (sau tháng có giá thành gần nhất, luôn gồm tháng hiện tại). ERP chưa tính giá trị xuất cho sản xuất ⇒ giá trị tồn tạm bị cao (25/10/2026: NVL 931,65 tỷ so với 639,31 tỷ cuối T9). Báo cáo giá trị tồn: lọc `is_provisional = 0`. |
+| Lãi gộp | `fact_csm_product_profit`: `gross_profit` = `sale_actual` − `cost_actual` (trước chiết khấu); `gross_profit_after_discount` = trừ thêm 3 khoản chiết khấu (≈ chỉ tiêu 20 BCKQKD); `business_profit` = lãi kinh doanh ERP (sau chi phí bán hàng, quản lý, lãi vay…). ERP ghi gần hết ở đơn vị 01 (Văn phòng) — không so lãi giữa xí nghiệp. |
 
 Từ điển đầy đủ từng bảng / cột: `models/marts/csm/_csm__models.yml` — dbt ghi luôn vào COMMENT bảng/cột của
 Doris (`persist_docs`), nên SmartBI / AI đọc được nghĩa cột ngay từ schema.
@@ -67,7 +71,13 @@ Tên bảng, tên cột cũ giữ nguyên (truy vấn cũ không lỗi). Những
 4. **Công nợ chỉ có phát sinh**: thêm `balance_end` / `balance_end_lcy` (dư nợ cuối tháng).
 5. **Mã lệch hoa / thường, khoảng trắng**: chuẩn hoá ⇒ nối được dim (prod: 231 mã giá thành trước đây "mồ côi").
 6. **Nguồn chưa có** (`business_planning*`): ra bảng rỗng đúng cấu trúc thay vì làm hỏng cả lần chạy.
-7. **Bỏ dữ liệu demo**: danh sách phòng ban tự đặt (`seed_department`) không phải dữ liệu ERP ⇒ `dim_csm_department`
+7. **Lãi gộp thực ra là lãi kinh doanh** (`fact_csm_product_profit`, sửa 10/2026): `gross_profit` lấy `BusinessProfit`
+   của ERP (đã trừ chiết khấu, chi phí bán hàng / quản lý / lãi vay) — T9/2026 ra −7,39 tỷ trong khi lãi gộp 93,65 tỷ
+   (20,5%). Nay `gross_profit` = doanh thu − giá vốn; thêm `business_profit` và các khoản chi phí ERP
+   (`discount_business discount_paid bonus_cost sale_cost manage_cost debt_cost sale_return_cost`,
+   `gross_profit_after_discount`). Đối chiếu BCKQKD: `debt_cost` = chỉ tiêu 24, `bonus_cost + sale_cost` = 25,
+   `manage_cost` = 26 (khớp từng tháng, 25 lệch ≤ 0,11 tỷ); `gross_profit_after_discount` ≈ chỉ tiêu 20.
+8. **Bỏ dữ liệu demo**: danh sách phòng ban tự đặt (`seed_department`) không phải dữ liệu ERP ⇒ `dim_csm_department`
    đọc bảng `department` của ERP (rỗng tới khi ERP có).
 
 ## Kiểm chứng (10/2026)
@@ -77,5 +87,7 @@ Tên bảng, tên cột cũ giữ nguyên (truy vấn cũ không lỗi). Những
 - **Nối kỳ dev → prod**: tồn / công nợ cuối 12/2024 tính từ dữ liệu dev = số đầu kỳ ERP trên prod:
   tồn NVL khớp từng xí nghiệp (trừ XN 02), 4.230/4.231 mã; tồn thành phẩm 1.729/1.729 mã;
   công nợ 353/353 khách (743,39 tỷ).
-- **Test tự động** (`dbt build` chạy cùng): đẳng thức 12 khoản mục Z, tổng mart = tổng nguồn, đẳng thức tồn,
-  dư nợ khớp nguồn, khoá không trùng, giả định về dòng chụp số dư của ERP.
+- **Test tự động** (`dbt build` chạy cùng): đẳng thức 12 khoản mục Z, tổng mart = tổng nguồn, đẳng thức tồn
+  (mốc chụp riêng từng mã), tồn liền mạch giữa các tháng, dư nợ khớp nguồn, khoá không trùng, giả định về dòng
+  chụp số dư của ERP, lãi gộp = doanh thu − giá vốn, cờ số tạm; cảnh báo (warn) khi lãi kinh doanh ERP lệch
+  lãi gộp − chi phí quá 3% doanh thu tháng.

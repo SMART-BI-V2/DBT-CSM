@@ -12,6 +12,7 @@
 --   trên prod cho 1.723/1.723 mã. GIÁ TRỊ tồn tính theo luồng chỉ là xấp xỉ (ERP đánh giá lại giá
 --   vốn cuối kỳ; lệch ~16% sau 3 năm) — dùng SL tồn làm chuẩn.
 -- [SỬA] dòng điều chỉnh tiền (|SL| = |giá trị|, vd mã 2930 tháng 12/2025) không tính vào số lượng.
+-- [SỬA 10/2026] is_provisional = 1: tháng chưa khoá sổ (số luỹ kế tạm, giá trị chưa đánh giá lại).
 with src as (
   select
     `ItemNo` as product_code,
@@ -38,25 +39,26 @@ snap as (
   group by 1, 2
 ),
 months as (select distinct mth from src),
-snap_months as (select distinct mth from src where is_snap),
-anchors as (
-  select m.mth, max(s.mth) as anchor
-  from months m left join snap_months s on s.mth <= m.mth
-  group by m.mth
-),
 key_months as (select product_code, min(mth) as first_mth from src group by 1),
-grid as (
-  select k.product_code, m.mth, a.anchor,
+grid0 as (
+  select k.product_code, m.mth,
     coalesce(v.q_in,0) q_in, coalesce(v.v_in,0) v_in, coalesce(v.q_out,0) q_out, coalesce(v.v_out,0) v_out,
     coalesce(v.q_inl,0) q_inl, coalesce(v.v_inl,0) v_inl, coalesce(v.q_exp,0) q_exp, coalesce(v.v_exp,0) v_exp,
     coalesce(v.q_int,0) q_int, coalesce(v.v_int,0) v_int, coalesce(v.q_outt,0) q_outt, coalesce(v.v_outt,0) v_outt,
     coalesce(s.q_snap,0) q_snap, coalesce(s.v_snap,0) v_snap,
-    (v.mth is not null or s.mth is not null) as has_src
+    (v.mth is not null or s.mth is not null) as has_src,
+    (s.mth is not null) as has_snap
   from key_months k
   join months m on m.mth >= k.first_mth
-  join anchors a on a.mth = m.mth
   left join mv v on v.product_code = k.product_code and v.mth = m.mth
   left join snap s on s.product_code = k.product_code and s.mth = m.mth
+),
+-- [SỬA 10/2026] mốc chụp số dư tính RIÊNG từng sản phẩm (xem fact_csm_material).
+grid as (
+  select g0.*,
+    max(case when g0.has_snap then g0.mth end)
+      over (partition by g0.product_code order by g0.mth rows between unbounded preceding and current row) as anchor
+  from grid0 g0
 ),
 bal as (
   select g.*,
@@ -84,6 +86,8 @@ select
   CAST(q_inl AS DECIMAL(18,4)) as qty_inland,  CAST(v_inl AS DECIMAL(18,2)) as val_inland,
   CAST(q_exp AS DECIMAL(18,4)) as qty_export,  CAST(v_exp AS DECIMAL(18,2)) as val_export,
   CAST(q_int AS DECIMAL(18,4)) as qty_input_total,   CAST(v_int AS DECIMAL(18,2)) as val_input_total,
-  CAST(q_outt AS DECIMAL(18,4)) as qty_output_total, CAST(v_outt AS DECIMAL(18,2)) as val_output_total
+  CAST(q_outt AS DECIMAL(18,4)) as qty_output_total, CAST(v_outt AS DECIMAL(18,2)) as val_output_total,
+  CAST(case when mth >= p.provisional_from then 1 else 0 end AS TINYINT) as is_provisional
 from fin
+cross join (select {{ csm_provisional_from() }} as provisional_from) p
 where has_src or q_end <> 0 or v_end <> 0 or q_beg <> 0 or v_beg <> 0

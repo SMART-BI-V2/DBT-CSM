@@ -10,6 +10,9 @@
 --   khớp từng XN trừ XN 02). Lưới đầy đủ XN × vật tư × tháng ⇒ lọc 1 tháng ra đủ tồn kho.
 --   Dòng chụp số dư hiện ở tháng của nó (vd 2024-12-01) với phát sinh = 0, qty_ton = số chụp.
 -- Thêm cột: qty_dau/val_dau (tồn đầu tháng), *_nhap_total / *_xuat_total (mọi loại nhập/xuất).
+-- [SỬA 10/2026] is_provisional = 1: tháng chưa khoá sổ (sau tháng giá thành gần nhất, luôn gồm tháng hiện
+--   tại). ERP chỉ tính GIÁ TRỊ xuất cho sản xuất khi khoá sổ ⇒ tháng tạm val_xuat_sx = 0 dù có lượng,
+--   val_ton bị thổi phồng (25/10/2026: 931,65 tỷ so với 639,31 tỷ cuối T9). Xem macro csm_provisional_from.
 with src as (
   select
     `SourceCode` as factory_code,
@@ -37,25 +40,28 @@ snap as (  -- số dư chụp cuối tháng
   group by 1, 2, 3
 ),
 months as (select distinct mth from src),
-snap_months as (select distinct mth from src where is_snap),
-anchors as (
-  select m.mth, max(s.mth) as anchor
-  from months m left join snap_months s on s.mth <= m.mth
-  group by m.mth
-),
 key_months as (select factory_code, material_code, min(mth) as first_mth from src group by 1, 2),
-grid as (
-  select k.factory_code, k.material_code, m.mth, a.anchor,
+grid0 as (
+  select k.factory_code, k.material_code, m.mth,
     coalesce(v.q_nk,0) q_nk, coalesce(v.v_nk,0) v_nk, coalesce(v.q_xk,0) q_xk, coalesce(v.v_xk,0) v_xk,
     coalesce(v.q_xsx,0) q_xsx, coalesce(v.v_xsx,0) v_xsx, coalesce(v.q_nsx,0) q_nsx, coalesce(v.v_nsx,0) v_nsx,
     coalesce(v.q_nt,0) q_nt, coalesce(v.v_nt,0) v_nt, coalesce(v.q_xt,0) q_xt, coalesce(v.v_xt,0) v_xt,
     coalesce(s.q_snap,0) q_snap, coalesce(s.v_snap,0) v_snap,
-    (v.mth is not null or s.mth is not null) as has_src
+    (v.mth is not null or s.mth is not null) as has_src,
+    (s.mth is not null) as has_snap
   from key_months k
   join months m on m.mth >= k.first_mth
-  join anchors a on a.mth = m.mth
   left join mv v on v.factory_code = k.factory_code and v.material_code = k.material_code and v.mth = m.mth
   left join snap s on s.factory_code = k.factory_code and s.material_code = k.material_code and s.mth = m.mth
+),
+-- [SỬA 10/2026] mốc chụp số dư tính RIÊNG từng XN × vật tư (tháng gần nhất ≤ tháng đang xét có dòng chụp
+-- của chính vật tư đó). Trước đây mốc tính chung cả bảng ⇒ nếu đối tác thêm dòng chụp cho vài vật tư,
+-- tồn của mọi vật tư khác trong tháng đó bị đưa về 0. Trên dữ liệu hiện tại kết quả không đổi.
+grid as (
+  select g0.*,
+    max(case when g0.has_snap then g0.mth end)
+      over (partition by g0.factory_code, g0.material_code order by g0.mth rows between unbounded preceding and current row) as anchor
+  from grid0 g0
 ),
 bal as (
   select g.*,
@@ -84,7 +90,9 @@ select
   CAST(q_ton AS DECIMAL(18,4)) as qty_ton,       CAST(v_ton AS DECIMAL(18,2)) as val_ton,
   CAST(q_dau AS DECIMAL(18,4)) as qty_dau,       CAST(v_dau AS DECIMAL(18,2)) as val_dau,
   CAST(q_nt AS DECIMAL(18,4)) as qty_nhap_total, CAST(v_nt AS DECIMAL(18,2)) as val_nhap_total,
-  CAST(q_xt AS DECIMAL(18,4)) as qty_xuat_total, CAST(v_xt AS DECIMAL(18,2)) as val_xuat_total
+  CAST(q_xt AS DECIMAL(18,4)) as qty_xuat_total, CAST(v_xt AS DECIMAL(18,2)) as val_xuat_total,
+  CAST(case when mth >= p.provisional_from then 1 else 0 end AS TINYINT) as is_provisional
 from fin
+cross join (select {{ csm_provisional_from() }} as provisional_from) p
 -- bỏ ô trống hoàn toàn (không phát sinh, tồn đầu và cuối đều 0)
 where has_src or q_ton <> 0 or v_ton <> 0 or q_dau <> 0 or v_dau <> 0

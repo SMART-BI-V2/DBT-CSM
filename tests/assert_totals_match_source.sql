@@ -12,6 +12,9 @@ with chk as (
   select 'product_profit.sale_actual', (select sum(sale_actual) from {{ ref('fact_csm_product_profit') }}),
          (select sum(`SaleActual`) from {{ source('csm', 'manufacturer_profit') }})
   union all
+  select 'product_profit.business_profit', (select sum(business_profit) from {{ ref('fact_csm_product_profit') }}),
+         (select sum(`BusinessProfit`) from {{ source('csm', 'manufacturer_profit') }})
+  union all
   select 'material.nhap_total', (select sum(val_nhap_total) from {{ ref('fact_csm_material') }}),
          (select sum(`AmountNhapTotal`) from {{ source('csm', 'material_entry') }})
   union all

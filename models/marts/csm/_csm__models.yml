@@ -258,8 +258,14 @@ models:
           arguments:
             columns: [factory_code, product_code, doc_type, period_from]
     description: >
-      Doanh thu – giá vốn – lãi gộp theo đơn vị × sản phẩm × nội địa/xuất khẩu × tháng.
-      ERP ghi gần như toàn bộ ở factory_code 01 (Văn phòng) ⇒ không so lãi giữa các xí nghiệp.
+      Doanh thu – giá vốn – lãi theo đơn vị × sản phẩm × nội địa/xuất khẩu × tháng (chỉ có khi tháng đã
+      khoá sổ). ERP ghi gần như toàn bộ ở factory_code 01 (Văn phòng) ⇒ không so lãi giữa các xí nghiệp.
+      Chuỗi lãi: gross_profit = sale_actual − cost_actual (lãi gộp trước chiết khấu);
+      gross_profit_after_discount = gross_profit − discount_amt − discount_business − discount_paid
+      (≈ chỉ tiêu 20 Lợi nhuận gộp của company_profit_flat); business_profit (lãi kinh doanh ERP) ≈
+      gross_profit − (warranty + discount_amt + discount_business + discount_paid + bonus_cost + sale_cost
+      + manage_cost + debt_cost + sale_return_cost) − khoản ERP không xuất cột (0,2–1,2% doanh thu tháng,
+      chỉ hàng nội địa). Biên lãi gộp = SUM(gross_profit) / SUM(sale_actual). Mọi số tiền VND, chi phí DƯƠNG.
     columns:
       - name: factory_code
         description: Đơn vị ghi nhận (thường 01).
@@ -274,33 +280,61 @@ models:
       - name: sale_qty
         description: Số lượng bán (dòng điều chỉnh tiền không tính).
       - name: sale_actual
-        description: Doanh thu thuần.
+        description: >
+          Doanh thu theo giá bán = đơn giá × số lượng (VND), CHƯA trừ chiết khấu (discount_amt,
+          discount_business, discount_paid) — không phải doanh thu thuần chỉ tiêu 10.
       - name: cost_actual
-        description: Giá vốn.
+        description: Giá vốn hàng bán (VND, dương); tổng tháng ≈ chỉ tiêu 11 của company_profit_flat.
       - name: gross_profit
-        description: Lãi gộp (BusinessProfit của ERP).
+        description: >
+          Lãi gộp trước chiết khấu = sale_actual − cost_actual (VND). Trước 10/2026 cột này chứa nhầm
+          BusinessProfit (lãi kinh doanh) — số đó nay ở business_profit.
       - name: discount_amt
-        description: Chiết khấu.
+        description: Chiết khấu thương mại (DiscountAmount của ERP) — giảm trừ doanh thu.
       - name: warranty
-        description: Chi phí bảo hành.
+        description: Chi phí bảo hành (CostWarranty của ERP).
       - name: luong
-        description: Không có dữ liệu (luôn 0).
+        description: Không có dữ liệu (luôn 0) — giữ cho model cũ, không dùng.
       - name: fuel
-        description: Không có dữ liệu (luôn 0).
+        description: Không có dữ liệu (luôn 0) — giữ cho model cũ, không dùng.
       - name: packing
-        description: Không có dữ liệu (luôn 0).
+        description: Không có dữ liệu (luôn 0) — giữ cho model cũ, không dùng.
       - name: cppx
-        description: Không có dữ liệu (luôn 0).
+        description: Không có dữ liệu (luôn 0) — giữ cho model cũ, không dùng.
       - name: vl_phu
-        description: Không có dữ liệu (luôn 0).
+        description: Không có dữ liệu (luôn 0) — giữ cho model cũ, không dùng.
       - name: repair
-        description: Không có dữ liệu (luôn 0).
+        description: Không có dữ liệu (luôn 0) — giữ cho model cũ, không dùng.
       - name: cost_warehouse
-        description: Không có dữ liệu (luôn 0).
+        description: Không có dữ liệu (luôn 0) — giữ cho model cũ, không dùng.
       - name: dien_luc
-        description: Không có dữ liệu (luôn 0).
+        description: Không có dữ liệu (luôn 0) — giữ cho model cũ, không dùng.
       - name: party
-        description: Không có dữ liệu (luôn 0).
+        description: Không có dữ liệu (luôn 0) — giữ cho model cũ, không dùng.
+      - name: discount_business
+        description: Chiết khấu kinh doanh theo chính sách bán hàng (DiscountBusiness của ERP) — giảm trừ doanh thu.
+      - name: discount_paid
+        description: Chiết khấu thanh toán (DiscountPaid của ERP).
+      - name: gross_profit_after_discount
+        description: >
+          Lãi gộp sau chiết khấu = gross_profit − discount_amt − discount_business − discount_paid (VND);
+          tổng tháng gần chỉ tiêu 20 Lợi nhuận gộp của company_profit_flat (2025–2026 lệch −4,4…+7,2 tỷ/tháng; 01/2026 +10,8 tỷ do lệch kỳ giá vốn 12/2025–01/2026).
+      - name: bonus_cost
+        description: >
+          Chi phí thưởng / hỗ trợ bán hàng phân bổ (BonusCost của ERP; có tháng ÂM do hoàn nhập trích trước).
+          bonus_cost + sale_cost ≈ chỉ tiêu 25 Chi phí bán hàng (lệch ≤ 0,11 tỷ/tháng).
+      - name: sale_cost
+        description: Chi phí bán hàng phân bổ (SaleCost của ERP); cộng bonus_cost ≈ chỉ tiêu 25 Chi phí bán hàng.
+      - name: manage_cost
+        description: Chi phí quản lý doanh nghiệp phân bổ (ManageCost của ERP); tổng tháng = chỉ tiêu 26.
+      - name: debt_cost
+        description: Chi phí lãi vay phân bổ theo công nợ (DebtCost của ERP); tổng tháng = chỉ tiêu 24 Chi phí lãi vay.
+      - name: sale_return_cost
+        description: Chi phí hàng bán bị trả lại (SaleReturnCost của ERP; hiện luôn 0).
+      - name: business_profit
+        description: >
+          Lãi kinh doanh theo ERP (BusinessProfit) = gross_profit − các chi phí trên − khoản ERP không xuất
+          cột riêng (tỷ lệ cố định trên doanh thu theo nhóm hàng nội địa). Không phải lãi gộp.
 
   - name: fact_csm_sales
     description: >
@@ -426,7 +460,9 @@ models:
       Nhập – xuất – tồn nguyên vật liệu theo xí nghiệp × vật tư × tháng; period_date = ngày đầu tháng.
       Có đủ mọi tháng cho vật tư còn tồn ⇒ lọc 1 tháng ra toàn bộ tồn kho. qty_ton = qty_dau
       + qty_nhap_total − qty_xuat_total. Tháng chứa dòng chụp số dư đầu kỳ của ERP (vd 2024-12)
-      chỉ có tồn, không có phát sinh.
+      chỉ có tồn, không có phát sinh. Tháng is_provisional = 1 (chưa khoá sổ, gồm tháng hiện tại) là số
+      luỹ kế tạm: ERP chưa tính giá trị xuất cho sản xuất (val_xuat_sx = 0) ⇒ val_ton bị cao; báo cáo
+      giá trị tồn nên lọc is_provisional = 0.
     columns:
       - name: period_date
         description: Ngày đầu tháng.
@@ -466,6 +502,10 @@ models:
         description: Tổng mọi loại xuất trong tháng (lượng).
       - name: val_xuat_total
         description: Tổng mọi loại xuất trong tháng (giá trị).
+      - name: is_provisional
+        description: >
+          1 = tháng chưa khoá sổ (sau tháng có giá thành gần nhất, luôn gồm tháng hiện tại): số luỹ kế tạm,
+          giá trị xuất sản xuất chưa tính ⇒ giá trị tồn chưa đúng; 0 = tháng đã khoá sổ.
 
   - name: fact_csm_fg_inventory
     tests:
@@ -476,6 +516,7 @@ models:
       Nhập – xuất – tồn thành phẩm toàn công ty theo sản phẩm × tháng; period_date = ngày đầu tháng.
       qty_ending = qty_begin + qty_input_total − qty_output_total (đủ mọi tháng cho SP còn tồn).
       Giá trị tồn (val_*) tính theo luồng nhập – xuất, là xấp xỉ: ERP đánh giá lại giá vốn cuối kỳ.
+      Tháng is_provisional = 1 (chưa khoá sổ, gồm tháng hiện tại) là số luỹ kế tạm.
     columns:
       - name: period_date
         description: Ngày đầu tháng.
@@ -513,6 +554,8 @@ models:
         description: Tổng mọi loại xuất (lượng).
       - name: val_output_total
         description: Tổng mọi loại xuất (giá trị).
+      - name: is_provisional
+        description: 1 = tháng chưa khoá sổ (sau tháng có giá thành gần nhất, luôn gồm tháng hiện tại) — số luỹ kế tạm; 0 = đã khoá sổ.
 
   - name: fact_csm_production
     tests:
@@ -521,7 +564,7 @@ models:
             columns: [period_date, product_code]
     description: >
       Sản lượng nhập / xuất / tồn thành phẩm theo sản phẩm × tháng — cùng số liệu với
-      fact_csm_fg_inventory (ít cột hơn). Không có factory_code.
+      fact_csm_fg_inventory (ít cột hơn). Không có factory_code. is_provisional = 1: tháng chưa khoá sổ.
     columns:
       - name: period_date
         description: Ngày đầu tháng.
@@ -551,6 +594,8 @@ models:
         description: Tổng mọi loại nhập (lượng).
       - name: qty_output_total
         description: Tổng mọi loại xuất (lượng).
+      - name: is_provisional
+        description: 1 = tháng chưa khoá sổ (số luỹ kế tạm); 0 = đã khoá sổ.
 
   - name: fact_csm_production_plan
     tests:
@@ -714,7 +759,10 @@ models:
       - name: period_last
         description: Kỳ (tháng) cuối cùng có dữ liệu.
       - name: last_posting_date
-        description: Ngày hạch toán mới nhất ở nguồn ERP.
+        description: >
+          Ngày số liệu được tính tới: ngày hạch toán mới nhất ở nguồn ERP; với nguồn chỉ ghi theo tháng
+          (fact_csm_material, fact_csm_fg_inventory, fact_csm_production, fact_csm_production_plan) là ngày
+          ERP trích số (SystemDate) của tháng cuối, không quá cuối tháng.
       - name: last_period_complete
         description: 1 = kỳ cuối đã đủ tháng; 0 = kỳ cuối đang dở (luỹ kế tới last_posting_date).
       - name: row_count
