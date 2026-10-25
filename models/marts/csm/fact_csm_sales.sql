@@ -11,6 +11,8 @@ select
   CAST(`DocumentNo` AS VARCHAR(128)) as doc_no,
   CAST(`ResponsibilityCenter` AS VARCHAR(64)) as responsibility_center,
   {{ csm_period_columns('`PostingDate`') }},
+  -- Ngày ghi sổ — để dự báo theo TUẦN (Forecast) và phân tích theo ngày.
+  CAST(`PostingDate` AS DATE) as posting_date,
   CAST(case when is_adj then 0 else coalesce(`Quantity`, 0) end AS DECIMAL(38,10)) as qty,
   CAST(coalesce(`Amount`, 0) AS DECIMAL(38,10)) as amount,
   CAST(coalesce(`VATBaseAmount`, 0) AS DECIMAL(38,10)) as vat_base,

@@ -364,6 +364,8 @@ models:
         description: Ngày đầu tháng.
       - name: period_to
         description: Ngày cuối tháng.
+      - name: posting_date
+        description: Ngày ghi sổ chứng từ (PostingDate ERP) — dùng cho dự báo tuần.
       - name: qty
         description: Số lượng bán (0 với dòng điều chỉnh).
       - name: amount
@@ -394,6 +396,8 @@ models:
         description: Ngày đầu tháng.
       - name: period_to
         description: Ngày cuối tháng.
+      - name: posting_date
+        description: Ngày ghi sổ chứng từ (PostingDate ERP) — dùng cho dự báo tuần.
       - name: amount
         description: Doanh thu dịch vụ (VND).
 
