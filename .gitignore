@@ -5,3 +5,4 @@ logs/
 .dbt/
 .dbt_cron.lock
 .DS_Store
+.env

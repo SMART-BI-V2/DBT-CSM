@@ -7,7 +7,6 @@ profile: casumina_csm
 
 model-paths: ["models"]
 test-paths: ["tests"]
-seed-paths: ["seeds"]
 macro-paths: ["macros"]
 
 clean-targets:
@@ -27,17 +26,17 @@ models:
       +properties:
         replication_num: "1"
 
+# Chống đọc dữ liệu dở dang: đối tác xoá + nạp lại tháng hiện tại mỗi ~18 phút.
+# Trước khi dựng: chờ nguồn yên ≥ csm_quiet_seconds; sau khi dựng: nguồn bị ghi trong lúc dựng ⇒ báo lỗi
+# (scripts/dbt_cron.sh dựng lại). Xem macros/csm_source_guard.sql.
+on-run-start:
+  - "{{ csm_wait_for_quiet_source() }}"
+on-run-end:
+  - "{{ csm_assert_source_unchanged() }}"
+
 vars:
   # CSDL Doris chứa bảng nguồn ERP (đối tác nạp). Thử nghiệm: --vars '{csm_source_schema: tmp_csm_devsrc}'
   csm_source_schema: raw_stage
-
-seeds:
-  casumina_csm:
-    +properties:
-      replication_num: "1"
-    seed_department:
-      +column_types:
-        RowID: int
-        Code: varchar(64)
-        Description: varchar(512)
-        SourceCode: varchar(16)
+  csm_quiet_seconds: 120      # nguồn phải không bị ghi trong ngần này giây
+  csm_quiet_max_wait: 1200    # chờ tối đa (giây) rồi báo lỗi
+  csm_guard_schema: ops       # nơi ghi mốc kiểm tra tạm (không làm bẩn CSDL mart)

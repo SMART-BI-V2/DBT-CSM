@@ -7,7 +7,7 @@ Dự đoán đọc (CSDL Doris `mart`, cụm prod 192.168.15.197).
 ERP đối tác ──nạp──▶ raw_stage (của đối tác, chỉ đọc)
                          │  dbt: staging = CTE (chuẩn hoá mã, kiểu) — không sinh bảng
                          ▼
-                     mart.dim_csm_* / mart.fact_csm_* (25 bảng) ──▶ SmartBI / What-If
+                     mart.dim_csm_* / mart.fact_csm_* / meta_csm_data_coverage (26 bảng) ──▶ SmartBI / What-If
 ```
 
 Nhánh `main` là bản PostgreSQL cũ (đang chạy trên dev .179); nhánh này (`feat/doris`) là bản Doris.
@@ -25,8 +25,11 @@ scripts/dbt_doris.sh build --vars '{csm_source_schema: tmp_src}'   # đọc ngu�
 - Tài khoản `dbt_runner` (vai trò `role_transform`: đọc `raw_stage`, ghi `raw`/`mart`/`ops`).
   Mật khẩu lấy từ `DORIS_PASSWORD` hoặc vault của `ansible-csm-data`; profile sinh vào `.dbt/` (gitignore).
 - Mặc định đi qua container VPN `csm-vpn` (máy dev); chạy trong LAN đối tác: `DBT_NETWORK=host`.
-- Chạy định kỳ: `scripts/dbt_cron.sh` (khoá chống chạy chồng, log `logs/dbt_YYYYMMDD.log`).
-- Một lần dựng toàn bộ ~30 giây; mỗi bảng dựng vào bảng tạm rồi hoán đổi nguyên tử —
+- Chạy định kỳ: `scripts/dbt_cron.sh` mỗi 20 phút trên máy DATA .197 (role `dbt` của `ansible-csm-data`):
+  khoá chống chạy chồng, log `logs/dbt_YYYYMMDD.log`, tự dựng lại một lần nếu nguồn bị ghi chen ngang.
+- Chống đọc dữ liệu dở dang: đối tác xoá + nạp lại tháng hiện tại khoảng 18 phút/lần ⇒ trước khi dựng, dbt chờ
+  `raw_stage` không bị ghi ≥ 2 phút; sau khi dựng kiểm lại nguồn không đổi (`macros/csm_source_guard.sql`).
+- Một lần dựng toàn bộ ~30 giây (thử tải: ~12 triệu dòng / 24 năm 41 giây; ×60 khối lượng 73 giây); mỗi bảng dựng vào bảng tạm rồi hoán đổi nguyên tử —
   BI không bao giờ đọc bảng dở dang.
 
 ## Quy ước dữ liệu (đọc trước khi viết truy vấn BI)
@@ -39,6 +42,7 @@ scripts/dbt_doris.sh build --vars '{csm_source_schema: tmp_src}'   # đọc ngu�
 | Khoản mục Z | 12 khoản theo `costing_title` của ERP: `nvlc vl_phu fuel packing ccpt dien_luc luong bhxh_yt kpcd khcb scl cppx`; tổng = `cost_total_components`. |
 | Doanh thu | `fact_csm_sales.amount` (đã gồm dòng điều chỉnh âm) + `fact_csm_service_invoice.amount`. `doc_type` là mã ERP (0, 5 bán; 12 điều chỉnh), không phải inland/export. |
 | Tồn kho / công nợ | Có đủ mọi tháng ⇒ `WHERE period_date = …` ra toàn bộ tồn / dư nợ của tháng đó. |
+| Độ phủ dữ liệu | `meta_csm_data_coverage`: mỗi bảng fact có số từ kỳ nào tới kỳ nào, kỳ cuối đã đủ tháng chưa. Tháng hiện tại là số luỹ kế (đối tác nạp lại nhiều lần/ngày); giá thành, lãi gộp, BOM chỉ có khi tháng đã khoá sổ. |
 | Lãi gộp | `fact_csm_product_profit` ERP ghi gần hết ở đơn vị 01 (Văn phòng) — không so lãi giữa xí nghiệp. |
 
 Từ điển đầy đủ từng bảng / cột: `models/marts/csm/_csm__models.yml`.
@@ -61,6 +65,8 @@ Tên bảng, tên cột cũ giữ nguyên (truy vấn cũ không lỗi). Những
 4. **Công nợ chỉ có phát sinh**: thêm `balance_end` / `balance_end_lcy` (dư nợ cuối tháng).
 5. **Mã lệch hoa / thường, khoảng trắng**: chuẩn hoá ⇒ nối được dim (prod: 231 mã giá thành trước đây "mồ côi").
 6. **Nguồn chưa có** (`business_planning*`): ra bảng rỗng đúng cấu trúc thay vì làm hỏng cả lần chạy.
+7. **Bỏ dữ liệu demo**: danh sách phòng ban tự đặt (`seed_department`) không phải dữ liệu ERP ⇒ `dim_csm_department`
+   đọc bảng `department` của ERP (rỗng tới khi ERP có).
 
 ## Kiểm chứng (10/2026)
 
@@ -70,12 +76,4 @@ Tên bảng, tên cột cũ giữ nguyên (truy vấn cũ không lỗi). Những
   tồn NVL khớp từng xí nghiệp (trừ XN 02), 4.230/4.231 mã; tồn thành phẩm 1.729/1.729 mã;
   công nợ 353/353 khách (743,39 tỷ).
 - **Test tự động** (`dbt build` chạy cùng): đẳng thức 12 khoản mục Z, tổng mart = tổng nguồn, đẳng thức tồn,
-  dư nợ khớp nguồn, khoá không trùng, giả định về dòng chụp số dư của ERP, cảnh báo thiếu dữ liệu NVL.
-
-## Chờ đối tác (cảnh báo trong test)
-
-- `manufacturer_material_costing` chỉ có 7/21 tháng (2025-01 → 2026-09); 06/2026 lệch NVLC 0,18 tỷ.
-- `product_group`, `customer_profit` rỗng; `business_planning*`, `balance_account` chưa có.
-- XN 02 ngừng từ 09/2025 nhưng còn 14 tỷ tồn NVL treo; tồn đầu kỳ XN 02 lệch 2,6 tỷ so với dev.
-- Kế hoạch sản xuất gần trùng thực tế (cập nhật lại sau tháng?) — cần xác nhận ý nghĩa bảng kế hoạch.
-- Lịch sử 2022–2024 chưa nạp vào prod (Dự đoán cần chuỗi dài).
+  dư nợ khớp nguồn, khoá không trùng, giả định về dòng chụp số dư của ERP.

@@ -137,7 +137,7 @@ models:
         description: Tên nhóm.
 
   - name: dim_csm_department
-    description: Phòng ban (danh sách tạm từ seed_department — ERP chưa cung cấp).
+    description: Phòng ban (bảng department của ERP — hiện ERP chưa nạp, bảng rỗng).
     columns:
       - name: department_code
         description: Mã phòng ban.
@@ -696,3 +696,28 @@ models:
         description: Ngày hạch toán (cuối tháng).
       - name: system_date
         description: Ngày ERP ghi nhận.
+
+  # ---------------------------------------------------------------- metadata
+  - name: meta_csm_data_coverage
+    description: >
+      Độ phủ dữ liệu của từng bảng fact (cập nhật mỗi lần dựng). Dùng để trả lời "có số liệu tới
+      khi nào": tháng hiện tại là số LUỸ KẾ tới last_posting_date (đối tác nạp lại nhiều lần/ngày);
+      bảng khoá sổ tháng (giá thành, lãi gộp, BOM) chỉ có số khi tháng đã đóng.
+    columns:
+      - name: table_name
+        description: Tên bảng fact.
+        tests: [not_null, unique]
+      - name: description
+        description: Nội dung bảng.
+      - name: period_first
+        description: Kỳ (tháng) đầu tiên có dữ liệu.
+      - name: period_last
+        description: Kỳ (tháng) cuối cùng có dữ liệu.
+      - name: last_posting_date
+        description: Ngày hạch toán mới nhất ở nguồn ERP.
+      - name: last_period_complete
+        description: 1 = kỳ cuối đã đủ tháng; 0 = kỳ cuối đang dở (luỹ kế tới last_posting_date).
+      - name: row_count
+        description: Số dòng của bảng.
+      - name: built_at
+        description: Thời điểm dựng lại mart.

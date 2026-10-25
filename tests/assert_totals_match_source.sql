@@ -18,4 +18,6 @@ with chk as (
   select 'customer_balance.amount_lcy', (select sum(amount_lcy) from {{ ref('fact_csm_customer_balance') }}),
          (select sum(`AmountLCY`) from {{ source('csm', 'customer_balance') }})
 )
-select k, mart, src from chk where abs(coalesce(mart,0) - coalesce(src,0)) > 1
+-- ngưỡng tương đối: mart làm tròn 2 chữ số từng dòng, cộng dồn hàng chục triệu dòng lệch vài đồng
+select k, mart, src from chk
+where abs(coalesce(mart,0) - coalesce(src,0)) > greatest(1, abs(coalesce(src,0)) * 1e-12)
