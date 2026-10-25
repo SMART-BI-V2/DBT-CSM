@@ -1,3 +1,4 @@
-{{ config(tags=['csm']) }}
+{{ config(tags=['csm'], duplicate_key=['location_code'], distributed_by=['location_code']) }}
 
-select "Code"::text as location_code, "Description"::text as location_name from {{ ref('stg_csm__location') }}
+select CAST(`Code` AS VARCHAR(64)) as location_code, CAST(`Description` AS VARCHAR(512)) as location_name
+from {{ ref('stg_csm__location') }}

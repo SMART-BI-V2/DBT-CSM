@@ -1,4 +1,4 @@
 {{ config(tags=['staging']) }}
 
-select *
+select `RowID`, {{ csm_trim("`Code`") }} as `Code`, `Description`, `SortName`, `ShowOn`
 from {{ source('csm', 'source_code') }}

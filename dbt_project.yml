@@ -1,15 +1,14 @@
 name: "casumina_csm"
-version: "1.0.0"
+version: "2.0.0"
 config-version: 2
 
+# Bản Doris (nhánh feat/doris). Bản PostgreSQL cũ (dev .179) nằm ở nhánh main.
 profile: casumina_csm
 
 model-paths: ["models"]
-analysis-paths: ["analyses"]
 test-paths: ["tests"]
 seed-paths: ["seeds"]
 macro-paths: ["macros"]
-snapshot-paths: ["snapshots"]
 
 clean-targets:
   - "target"
@@ -18,25 +17,27 @@ clean-targets:
 models:
   casumina_csm:
     staging:
-      +materialized: view
-      +schema: staging_csm
+      # Chuẩn hoá mã/kiểu ngay trong câu lệnh mart — không sinh view trung gian
+      # (role_transform chỉ ghi được raw/mart/ops; mart chỉ chứa bảng cho BI).
+      +materialized: ephemeral
     marts:
       +materialized: table
-      +schema: csm
+      +buckets: 1
+      # Doris 1 BE ⇒ 1 bản sao (fe.conf force_olap_table_replication_num=1)
+      +properties:
+        replication_num: "1"
 
 vars:
-  # Source CSM database (read-only via postgres_fdw wrapper `csm_src`)
-  csm_source_database: casumina_db
-  csm_source_schema: public
-  # Target schema inside the configured connection (casumina_prod)
-  csm_mart_schema: csm
+  # CSDL Doris chứa bảng nguồn ERP (đối tác nạp). Thử nghiệm: --vars '{csm_source_schema: tmp_csm_devsrc}'
+  csm_source_schema: raw_stage
 
 seeds:
   casumina_csm:
-    +schema: seeds_csm
+    +properties:
+      replication_num: "1"
     seed_department:
       +column_types:
-        RowID: integer
-        Code: text
-        Description: text
-        SourceCode: text
+        RowID: int
+        Code: varchar(64)
+        Description: varchar(512)
+        SourceCode: varchar(16)

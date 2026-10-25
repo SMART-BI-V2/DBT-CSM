@@ -1,4 +1,7 @@
 {{ config(tags=['staging']) }}
 
-select *
+select {{ csm_trim('`SourceCode`') }} as `SourceCode`, {{ csm_code('`ItemNo`') }} as `ItemNo`, `PostingDate`,
+  `QtyDau`, `AmountDau`, `QtyNhapTotal`, `AmountNhapTotal`, `QtyXuatTotal`, `AmountXuatTotal`,
+  `QtyNhapKho`, `AmountNhapKho`, `QtyXuatKho`, `AmountXuatKho`, `QtyXuatSX`, `AmountXuatSX`,
+  `QtyNhapSX`, `AmountNhapSX`, `QtyTon`, `AmountTon`
 from {{ source('csm', 'material_entry') }}

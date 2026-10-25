@@ -1,83 +1,698 @@
 version: 2
 
+# Từ điển dữ liệu mart Casumina (CSDL Doris `mart`). Quy ước chung:
+# - Mã sản phẩm / vật tư / khách hàng đã chuẩn hoá: viết hoa, bỏ khoảng trắng hai đầu.
+# - Kỳ: period_from/period_to = ngày đầu/cuối tháng; period_date = ngày ĐẦU tháng
+#   (riêng fact_csm_bom: period_date = ngày CUỐI tháng).
+# - Chi phí giá thành (fact_csm_product_cost) giữ DẤU ÂM như ERP — đổi dấu khi hiển thị chi phí.
+# - factory_code: 01 Văn phòng, 02 XN Cao su Đồng Nai (ngừng từ 09/2025), 03 XN Cao su Hóc Môn,
+#   06 XN Lốp Radial, 07 XN Cao su Bình Lợi, 08 XN Lốp Radial 2, 99 Khác, '' Toàn công ty.
+# Lưu ý: dbt-doris chỉ tạo các cột được khai ở đây ⇒ thêm cột trong SQL thì phải khai thêm ở file này.
+
 models:
+  # ---------------------------------------------------------------- dimensions
   - name: dim_csm_factory
-    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+    description: Danh mục xí nghiệp / đơn vị (bảng source_code của ERP).
     columns:
       - name: factory_code
+        description: Mã đơn vị ('' = toàn công ty, 01 = Văn phòng, 02–08 = xí nghiệp sản xuất, 99 = khác).
         tests: [not_null, unique]
+      - name: factory_name
+        description: Tên đơn vị.
+      - name: brief_name
+        description: Tên viết tắt.
+      - name: show_on
+        description: Cờ hiển thị trên báo cáo của ERP.
+
   - name: dim_csm_category
-    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+    description: Nhóm hàng (item_category).
     columns:
       - name: category_code
+        description: Mã nhóm hàng (12 = Khác — dùng cho các dòng điều chỉnh hoá đơn).
         tests: [not_null, unique]
+      - name: category_name
+        description: Tên nhóm hàng.
+      - name: brief_name
+        description: Tên viết tắt.
+      - name: inventory_posting_group
+        description: Nhóm hạch toán kho.
+
   - name: dim_csm_product
-    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+    description: >
+      Danh mục hàng hoá — một bảng, hai vai trò: thành phẩm (product_code trong các fact) và
+      vật tư / NVL / bán thành phẩm (material_code). Mã đầu 01–10, 20, 30: thành phẩm;
+      21–23, 31–32, 41–43: vật tư/BTP.
     columns:
       - name: product_code
+        description: Mã hàng (đã viết hoa, bỏ khoảng trắng).
         tests: [not_null, unique]
+      - name: product_name
+        description: Tên hàng.
+      - name: uom
+        description: Đơn vị tính.
+      - name: category_code
+        description: Mã nhóm hàng (→ dim_csm_category).
+      - name: category_name
+        description: Tên nhóm hàng.
+      - name: inventory_posting_group
+        description: Nhóm hạch toán kho.
+      - name: product_group_code
+        description: Mã nhóm sản phẩm.
+      - name: product_group_name
+        description: Tên nhóm sản phẩm (trống khi ERP chưa nạp bảng product_group).
+      - name: sub_group_code1
+        description: Mã nhóm con cấp 1 (→ dim_csm_item_subgroup).
+
   - name: dim_csm_customer
-    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+    description: Danh mục khách hàng.
     columns:
       - name: customer_code
+        description: Mã khách hàng (đã viết hoa, bỏ khoảng trắng).
         tests: [not_null, unique]
+      - name: customer_name
+        description: Tên khách hàng.
+      - name: currency_code
+        description: Loại tiền giao dịch.
+      - name: customer_template_code
+        description: Mã mẫu khách hàng (→ dim_csm_customer_template).
+      - name: responsibility_center
+        description: Mã trung tâm phụ trách (→ dim_csm_responsibility_center).
+      - name: center_name
+        description: Tên trung tâm phụ trách.
+      - name: customer_type
+        description: export nếu trung tâm phụ trách = 21 (xuất khẩu), ngược lại inland (nội địa).
+      - name: city
+        description: Tỉnh / thành phố.
+      - name: email
+        description: Email.
+      - name: phone
+        description: Điện thoại.
+      - name: address
+        description: Địa chỉ.
+
   - name: dim_csm_location
-    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+    description: Danh mục kho.
     columns:
       - name: location_code
+        description: Mã kho.
         tests: [not_null, unique]
+      - name: location_name
+        description: Tên kho.
+
   - name: dim_csm_responsibility_center
-    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+    description: Trung tâm phụ trách (chi nhánh / kênh bán hàng).
     columns:
       - name: responsibility_center
+        description: Mã trung tâm (21 = xuất khẩu).
         tests: [not_null, unique]
+      - name: center_name
+        description: Tên trung tâm.
+      - name: brief_name
+        description: Tên viết tắt.
+      - name: city
+        description: Tỉnh / thành phố.
+      - name: address
+        description: Địa chỉ.
+
   - name: dim_csm_customer_template
-    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+    description: Mẫu khách hàng (phân loại khách).
     columns:
       - name: customer_template_code
+        description: Mã mẫu khách hàng.
         tests: [not_null, unique]
+      - name: template_name
+        description: Tên mẫu.
+      - name: responsibility_center
+        description: Trung tâm phụ trách mặc định.
+      - name: customer_posting_group
+        description: Nhóm hạch toán công nợ (→ dim_csm_customer_posting_group).
+
   - name: dim_csm_customer_posting_group
-    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+    description: Nhóm hạch toán công nợ khách hàng.
     columns:
       - name: posting_group_code
+        description: Mã nhóm.
         tests: [not_null, unique]
+      - name: posting_group_name
+        description: Tên nhóm.
+
   - name: dim_csm_department
-    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+    description: Phòng ban (danh sách tạm từ seed_department — ERP chưa cung cấp).
     columns:
       - name: department_code
+        description: Mã phòng ban.
         tests: [not_null, unique]
+      - name: department_name
+        description: Tên phòng ban.
+      - name: factory_code
+        description: Đơn vị trực thuộc (→ dim_csm_factory).
+
   - name: dim_csm_item_subgroup
-    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+    description: Nhóm con cấp 1 của hàng hoá.
     columns:
       - name: subgroup_code
+        description: Mã nhóm con.
         tests: [not_null, unique]
+      - name: subgroup_name
+        description: Tên nhóm con.
+
+  # ---------------------------------------------------------------- facts
   - name: fact_csm_product_cost
-    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+    description: >
+      Giá thành sản xuất (Z) theo xí nghiệp × sản phẩm × tháng. Chi phí mang DẤU ÂM như ERP
+      (dùng -SUM(...) để hiển thị chi phí); qty DƯƠNG. 12 khoản mục Z theo costing_title của ERP:
+      nvlc, vl_phu, fuel, packing, ccpt, dien_luc, luong, bhxh_yt, kpcd, khcb, scl, cppx —
+      tổng 12 khoản = cost_total_components. Các cột warranty, party, chiet_khau, repair,
+      cost_warehouse không phải khoản mục Z, luôn = 0 (giữ cho truy vấn cũ).
+    columns:
+      - name: factory_code
+        description: Xí nghiệp sản xuất.
+      - name: product_code
+        description: Thành phẩm.
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_csm_product')
+                field: product_code
+              config:
+                severity: warn
+      - name: period_from
+        description: Ngày đầu tháng.
+      - name: period_to
+        description: Ngày cuối tháng.
+      - name: qty
+        description: Sản lượng nhập kho thành phẩm (dương).
+      - name: unit_cost
+        description: Giá thành đơn vị (âm).
+      - name: total_cost
+        description: Tổng giá thành thực tế (âm) = unit_cost × qty.
+      - name: nvlc
+        description: Nguyên vật liệu chính (NVLC, âm).
+      - name: vl_phu
+        description: Nguyên vật liệu phụ (NVLP, âm).
+      - name: fuel
+        description: Nhiên liệu (NL, âm).
+      - name: packing
+        description: Bao bì (BB, âm).
+      - name: cppx
+        description: Chi phí phân xưởng (CPPX, âm).
+      - name: dien_luc
+        description: Động lực — điện, hơi (DL, âm).
+      - name: luong
+        description: Lương (LUONG, âm).
+      - name: bhxh_yt
+        description: Bảo hiểm xã hội (BHXH, âm).
+      - name: kpcd
+        description: Kinh phí công đoàn (KPCĐ, âm).
+      - name: khcb
+        description: Khấu hao cơ bản (KHCB, âm).
+      - name: scl
+        description: Sửa chữa lớn (SCL, âm).
+      - name: warranty
+        description: Không dùng (luôn 0) — BHXH nằm ở bhxh_yt.
+      - name: party
+        description: Không dùng (luôn 0) — KPCĐ nằm ở kpcd.
+      - name: chiet_khau
+        description: Không dùng (luôn 0) — khấu hao nằm ở khcb.
+      - name: repair
+        description: Không dùng (luôn 0) — sửa chữa lớn nằm ở scl.
+      - name: cost_warehouse
+        description: Không dùng (luôn 0) — chi phí phân xưởng nằm ở cppx.
+      - name: ccpt
+        description: Công cụ phụ tùng (CCPT, âm).
+      - name: cost_total_components
+        description: Tổng 12 khoản mục Z (âm); bằng total_cost ở ~98% dòng.
+
   - name: fact_csm_material_cost
-    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+    tests:
+      - unique_combination:
+          arguments:
+            columns: [factory_code, product_code, material_code, period_from]
+    description: >
+      Chi phí nguyên vật liệu chính theo xí nghiệp × thành phẩm × vật tư × tháng (DƯƠNG).
+      SUM(amount) = -nvlc của fact_csm_product_cost cùng XN × SP × tháng.
+      Lượng vật tư thực dùng ≈ SUM(amount) / AVG(unit_cost > 0).
+    columns:
+      - name: factory_code
+        description: Xí nghiệp.
+      - name: product_code
+        description: Thành phẩm.
+      - name: material_code
+        description: Vật tư (→ dim_csm_product).
+      - name: bom_no
+        description: Số BOM (= product_code).
+      - name: period_from
+        description: Ngày đầu tháng.
+      - name: period_to
+        description: Ngày cuối tháng.
+      - name: qty
+        description: Sản lượng THÀNH PHẨM đầu ra (không phải lượng vật tư).
+      - name: amount
+        description: Chi phí vật tư (VND, dương).
+      - name: unit_cost
+        description: Đơn giá vật tư (VND / đơn vị vật tư).
+
   - name: fact_csm_product_profit
-    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+    tests:
+      - unique_combination:
+          arguments:
+            columns: [factory_code, product_code, doc_type, period_from]
+    description: >
+      Doanh thu – giá vốn – lãi gộp theo đơn vị × sản phẩm × nội địa/xuất khẩu × tháng.
+      ERP ghi gần như toàn bộ ở factory_code 01 (Văn phòng) ⇒ không so lãi giữa các xí nghiệp.
+    columns:
+      - name: factory_code
+        description: Đơn vị ghi nhận (thường 01).
+      - name: product_code
+        description: Sản phẩm.
+      - name: doc_type
+        description: inland = nội địa, export = xuất khẩu.
+      - name: period_from
+        description: Ngày đầu tháng.
+      - name: period_to
+        description: Ngày cuối tháng.
+      - name: sale_qty
+        description: Số lượng bán (dòng điều chỉnh tiền không tính).
+      - name: sale_actual
+        description: Doanh thu thuần.
+      - name: cost_actual
+        description: Giá vốn.
+      - name: gross_profit
+        description: Lãi gộp (BusinessProfit của ERP).
+      - name: discount_amt
+        description: Chiết khấu.
+      - name: warranty
+        description: Chi phí bảo hành.
+      - name: luong
+        description: Không có dữ liệu (luôn 0).
+      - name: fuel
+        description: Không có dữ liệu (luôn 0).
+      - name: packing
+        description: Không có dữ liệu (luôn 0).
+      - name: cppx
+        description: Không có dữ liệu (luôn 0).
+      - name: vl_phu
+        description: Không có dữ liệu (luôn 0).
+      - name: repair
+        description: Không có dữ liệu (luôn 0).
+      - name: cost_warehouse
+        description: Không có dữ liệu (luôn 0).
+      - name: dien_luc
+        description: Không có dữ liệu (luôn 0).
+      - name: party
+        description: Không có dữ liệu (luôn 0).
+
   - name: fact_csm_sales
-    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+    description: >
+      Doanh thu bán hàng chi tiết từng dòng hoá đơn. doc_type là mã ERP (0, 5 = bán hàng; 12 = điều
+      chỉnh / giảm giá hoá đơn, amount âm) — KHÔNG phải inland/export. Doanh thu = SUM(amount)
+      (đã gồm điều chỉnh). Dòng điều chỉnh (is_adjustment = 1) có qty = 0, unit_price NULL.
+      Tổng doanh thu công ty = SUM(amount) + SUM(fact_csm_service_invoice.amount).
+    columns:
+      - name: customer_code
+        description: Khách hàng.
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_csm_customer')
+                field: customer_code
+              config:
+                severity: warn
+      - name: product_code
+        description: Sản phẩm (mã 2900xx = mã giả của dòng điều chỉnh hoá đơn).
+      - name: doc_type
+        description: Loại chứng từ ERP (0, 5 bán hàng; 12 điều chỉnh…).
+      - name: doc_no
+        description: Số chứng từ.
+      - name: responsibility_center
+        description: Trung tâm phụ trách (21 = xuất khẩu).
+      - name: period_from
+        description: Ngày đầu tháng.
+      - name: period_to
+        description: Ngày cuối tháng.
+      - name: qty
+        description: Số lượng bán (0 với dòng điều chỉnh).
+      - name: amount
+        description: Doanh thu trước thuế (VND).
+      - name: vat_base
+        description: Giá tính thuế GTGT.
+      - name: vat_amount
+        description: Thuế GTGT.
+      - name: unit_price
+        description: Đơn giá = amount / qty (NULL với dòng điều chỉnh).
+      - name: line_discount
+        description: Chiết khấu dòng.
+      - name: is_adjustment
+        description: 1 = dòng điều chỉnh tiền (giảm giá, sai thuế…), 0 = dòng bán hàng.
+
   - name: fact_csm_service_invoice
-    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+    description: Doanh thu dịch vụ theo chứng từ.
+    columns:
+      - name: factory_code
+        description: Đơn vị.
+      - name: doc_type
+        description: Loại chứng từ.
+      - name: doc_no
+        description: Số chứng từ.
+      - name: external_doc_no
+        description: Số hoá đơn bên ngoài.
+      - name: period_from
+        description: Ngày đầu tháng.
+      - name: period_to
+        description: Ngày cuối tháng.
+      - name: amount
+        description: Doanh thu dịch vụ (VND).
+
   - name: fact_csm_customer_profit
-    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+    description: Lãi theo khách hàng × sản phẩm × tháng (nguồn thưa — chỉ có một số kỳ).
+    columns:
+      - name: customer_code
+        description: Khách hàng.
+      - name: product_code
+        description: Sản phẩm.
+      - name: period_from
+        description: Ngày đầu tháng.
+      - name: period_to
+        description: Ngày cuối tháng.
+      - name: qty
+        description: Số lượng.
+      - name: amount
+        description: Doanh thu.
+      - name: discount_amt
+        description: Chiết khấu.
+      - name: vat_amount
+        description: Thuế GTGT.
+      - name: unit_profit
+        description: Lãi đơn vị.
+      - name: profit
+        description: Lãi.
+
   - name: fact_csm_bom
-    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
-  - name: fact_csm_production
-    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+    tests:
+      - unique_combination:
+          arguments:
+            columns: [period_date, product_code, material_code]
+    description: >
+      Định mức vật tư (BOM 1 cấp) theo tháng; period_date = NGÀY CUỐI tháng (luôn lọc theo kỳ).
+      ERP chỉ ghi BOM cho thành phẩm có sản xuất trong tháng.
+      Lượng định mức = sản lượng × qty_per_unit (scrap_pct là % hao hụt).
+    columns:
+      - name: period_date
+        description: Ngày cuối tháng.
+      - name: product_code
+        description: Thành phẩm.
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_csm_product')
+                field: product_code
+              config:
+                severity: warn
+      - name: material_code
+        description: Vật tư.
+      - name: qty_per_unit
+        description: Lượng vật tư cho 1 đơn vị thành phẩm.
+      - name: scrap_pct
+        description: Tỷ lệ hao hụt (%).
+      - name: gross_weight
+        description: Trọng lượng thô của thành phẩm (kg).
+
   - name: fact_csm_material
-    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
-  - name: fact_csm_production_plan
-    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
-  - name: fact_csm_customer_balance
-    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
-  - name: fact_csm_account_balance
-    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+    tests:
+      - unique_combination:
+          arguments:
+            columns: [period_date, factory_code, material_code]
+    description: >
+      Nhập – xuất – tồn nguyên vật liệu theo xí nghiệp × vật tư × tháng; period_date = ngày đầu tháng.
+      Có đủ mọi tháng cho vật tư còn tồn ⇒ lọc 1 tháng ra toàn bộ tồn kho. qty_ton = qty_dau
+      + qty_nhap_total − qty_xuat_total. Tháng chứa dòng chụp số dư đầu kỳ của ERP (vd 2024-12)
+      chỉ có tồn, không có phát sinh.
+    columns:
+      - name: period_date
+        description: Ngày đầu tháng.
+      - name: factory_code
+        description: Xí nghiệp.
+      - name: material_code
+        description: Vật tư.
+      - name: qty_nhap_kho
+        description: Lượng nhập mua.
+      - name: val_nhap_kho
+        description: Giá trị nhập mua.
+      - name: qty_xuat_kho
+        description: Lượng xuất kho.
+      - name: val_xuat_kho
+        description: Giá trị xuất kho.
+      - name: qty_xuat_sx
+        description: Lượng xuất cho sản xuất.
+      - name: val_xuat_sx
+        description: Giá trị xuất cho sản xuất.
+      - name: qty_nhap_sx
+        description: Lượng nhập từ sản xuất.
+      - name: val_nhap_sx
+        description: Giá trị nhập từ sản xuất.
+      - name: qty_ton
+        description: Tồn cuối tháng (lượng).
+      - name: val_ton
+        description: Tồn cuối tháng (giá trị VND).
+      - name: qty_dau
+        description: Tồn đầu tháng (lượng) = tồn cuối tháng trước.
+      - name: val_dau
+        description: Tồn đầu tháng (giá trị).
+      - name: qty_nhap_total
+        description: Tổng mọi loại nhập trong tháng (lượng).
+      - name: val_nhap_total
+        description: Tổng mọi loại nhập trong tháng (giá trị).
+      - name: qty_xuat_total
+        description: Tổng mọi loại xuất trong tháng (lượng).
+      - name: val_xuat_total
+        description: Tổng mọi loại xuất trong tháng (giá trị).
+
   - name: fact_csm_fg_inventory
-    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+    tests:
+      - unique_combination:
+          arguments:
+            columns: [period_date, product_code]
+    description: >
+      Nhập – xuất – tồn thành phẩm toàn công ty theo sản phẩm × tháng; period_date = ngày đầu tháng.
+      qty_ending = qty_begin + qty_input_total − qty_output_total (đủ mọi tháng cho SP còn tồn).
+      Giá trị tồn (val_*) tính theo luồng nhập – xuất, là xấp xỉ: ERP đánh giá lại giá vốn cuối kỳ.
+    columns:
+      - name: period_date
+        description: Ngày đầu tháng.
+      - name: product_code
+        description: Thành phẩm.
+      - name: qty_begin
+        description: Tồn đầu tháng (lượng).
+      - name: val_begin
+        description: Tồn đầu tháng (giá trị, xấp xỉ).
+      - name: qty_input
+        description: Nhập từ sản xuất (lượng).
+      - name: val_input
+        description: Nhập từ sản xuất (giá trị).
+      - name: qty_output
+        description: Xuất bán = nội địa + xuất khẩu (lượng).
+      - name: val_output
+        description: Xuất bán (giá trị).
+      - name: qty_ending
+        description: Tồn cuối tháng (lượng).
+      - name: val_ending
+        description: Tồn cuối tháng (giá trị, xấp xỉ).
+      - name: qty_inland
+        description: Xuất bán nội địa (lượng).
+      - name: val_inland
+        description: Xuất bán nội địa (giá trị).
+      - name: qty_export
+        description: Xuất khẩu (lượng).
+      - name: val_export
+        description: Xuất khẩu (giá trị).
+      - name: qty_input_total
+        description: Tổng mọi loại nhập (lượng).
+      - name: val_input_total
+        description: Tổng mọi loại nhập (giá trị).
+      - name: qty_output_total
+        description: Tổng mọi loại xuất (lượng).
+      - name: val_output_total
+        description: Tổng mọi loại xuất (giá trị).
+
+  - name: fact_csm_production
+    tests:
+      - unique_combination:
+          arguments:
+            columns: [period_date, product_code]
+    description: >
+      Sản lượng nhập / xuất / tồn thành phẩm theo sản phẩm × tháng — cùng số liệu với
+      fact_csm_fg_inventory (ít cột hơn). Không có factory_code.
+    columns:
+      - name: period_date
+        description: Ngày đầu tháng.
+      - name: product_code
+        description: Thành phẩm.
+      - name: qty_begin
+        description: Tồn đầu tháng (lượng).
+      - name: val_begin
+        description: Tồn đầu tháng (giá trị, xấp xỉ).
+      - name: qty_input
+        description: Nhập từ sản xuất (lượng).
+      - name: val_input
+        description: Nhập từ sản xuất (giá trị).
+      - name: qty_output
+        description: Xuất bán (lượng).
+      - name: val_output
+        description: Xuất bán (giá trị).
+      - name: qty_ending
+        description: Tồn cuối tháng (lượng).
+      - name: val_ending
+        description: Tồn cuối tháng (giá trị, xấp xỉ).
+      - name: qty_inland
+        description: Xuất bán nội địa (lượng).
+      - name: qty_export
+        description: Xuất khẩu (lượng).
+      - name: qty_input_total
+        description: Tổng mọi loại nhập (lượng).
+      - name: qty_output_total
+        description: Tổng mọi loại xuất (lượng).
+
+  - name: fact_csm_production_plan
+    tests:
+      - unique_combination:
+          arguments:
+            columns: [period_date, product_code]
+    description: >
+      Kế hoạch sản xuất theo sản phẩm × tháng; period_date = ngày đầu tháng. Dòng kế hoạch giảm trừ
+      (mã giả 2900xx) chỉ có giá trị, số lượng = 0.
+    columns:
+      - name: period_date
+        description: Ngày đầu tháng.
+      - name: product_code
+        description: Sản phẩm.
+      - name: qty_plan
+        description: Sản lượng sản xuất kế hoạch.
+      - name: val_plan
+        description: Giá trị sản xuất kế hoạch.
+      - name: qty_output
+        description: Sản lượng tiêu thụ kế hoạch.
+      - name: val_output
+        description: Doanh thu kế hoạch (dòng giảm trừ mang dấu âm).
+      - name: qty_inland
+        description: Tiêu thụ nội địa kế hoạch.
+      - name: qty_export
+        description: Xuất khẩu kế hoạch.
+
+  - name: fact_csm_customer_balance
+    tests:
+      - unique_combination:
+          arguments:
+            columns: [customer_code, period_from]
+    description: >
+      Công nợ phải thu theo khách hàng × tháng. amount/debit/credit = phát sinh trong tháng
+      (nguyên tệ), *_lcy = quy đổi VND. balance_end_lcy = DƯ NỢ CUỐI THÁNG (VND); có đủ mọi tháng
+      cho khách còn dư nợ. Tháng 12 của năm trước kỳ dữ liệu chứa số dư đầu kỳ ERP.
+    columns:
+      - name: customer_code
+        description: Khách hàng.
+      - name: period_from
+        description: Ngày đầu tháng.
+      - name: period_to
+        description: Ngày cuối tháng.
+      - name: amount
+        description: Phát sinh (nợ − có), nguyên tệ.
+      - name: debit_amount
+        description: Phát sinh nợ, nguyên tệ.
+      - name: credit_amount
+        description: Phát sinh có, nguyên tệ.
+      - name: amount_lcy
+        description: Phát sinh (nợ − có), VND.
+      - name: debit_amount_lcy
+        description: Phát sinh nợ, VND.
+      - name: credit_amount_lcy
+        description: Phát sinh có, VND.
+      - name: balance_end
+        description: Dư nợ cuối tháng, nguyên tệ.
+      - name: balance_end_lcy
+        description: Dư nợ cuối tháng, VND.
+
+  - name: fact_csm_account_balance
+    description: Số dư tài khoản kế toán theo tháng (nguồn ERP hiện chưa có dữ liệu).
+    columns:
+      - name: account_no
+        description: Số tài khoản.
+      - name: account_name
+        description: Tên tài khoản.
+      - name: account_type
+        description: Loại tài khoản.
+      - name: factory_code
+        description: Đơn vị.
+      - name: period_from
+        description: Ngày đầu tháng.
+      - name: period_to
+        description: Ngày cuối tháng.
+      - name: beg_debit_amount
+        description: Dư nợ đầu kỳ.
+      - name: beg_credit_amount
+        description: Dư có đầu kỳ.
+      - name: debit_amount
+        description: Phát sinh nợ.
+      - name: credit_amount
+        description: Phát sinh có.
+      - name: end_debit_amount
+        description: Dư nợ cuối kỳ.
+      - name: end_credit_amount
+        description: Dư có cuối kỳ.
+
   - name: fact_csm_business_planning
-    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+    description: Kế hoạch / thực hiện kinh doanh công ty theo tháng (nguồn ERP chưa có — bảng rỗng).
+    columns:
+      - name: period_from
+        description: Ngày đầu tháng.
+      - name: period_to
+        description: Ngày cuối tháng.
+      - name: source
+        description: plan = kế hoạch, actual = thực hiện.
+      - name: kind
+        description: Loại kế hoạch.
+      - name: industrial_value
+        description: Giá trị sản xuất công nghiệp.
+      - name: industrial_value_actual
+        description: Giá trị sản xuất công nghiệp thực tế.
+      - name: amount
+        description: Doanh thu.
+      - name: industrial_amount
+        description: Doanh thu công nghiệp.
+      - name: inland_amount
+        description: Doanh thu nội địa.
+      - name: export_amount
+        description: Doanh thu xuất khẩu.
+      - name: btp
+        description: Bán thành phẩm.
+      - name: business_amount
+        description: Doanh thu kinh doanh.
+      - name: worker
+        description: Số lao động.
+      - name: salary
+        description: Quỹ lương.
+      - name: profit_amount
+        description: Lợi nhuận.
+
   - name: company_profit_flat
-    description: CSM mart materialised by dbt; replaces the corresponding legacy Python transform.
+    description: Báo cáo kết quả kinh doanh toàn công ty theo dòng chỉ tiêu (ord 1–18) × tháng.
+    columns:
+      - name: source_row_id
+        description: RowID dòng nguồn.
+      - name: section
+        description: Nhóm chỉ tiêu.
+      - name: description
+        description: Tên chỉ tiêu.
+      - name: account_name
+        description: Mã chỉ tiêu (01, 02, 10, 11, 20…).
+      - name: ord
+        description: Thứ tự hiển thị.
+      - name: amount
+        description: Giá trị (VND).
+      - name: period_from
+        description: Ngày đầu tháng.
+      - name: period_to
+        description: Ngày cuối tháng.
+      - name: posting_date
+        description: Ngày hạch toán (cuối tháng).
+      - name: system_date
+        description: Ngày ERP ghi nhận.

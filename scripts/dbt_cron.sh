@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
-# Rebuild the CSM marts on a schedule. Wraps scripts/dbt.sh with a lock, a
-# daily log and retention, mirroring casumina-mysql/auto_sync.sh.
+# Dựng lại mart CSM trên Doris theo lịch: bọc scripts/dbt_doris.sh với khoá chống chạy chồng,
+# log theo ngày và tự xoá log cũ. Biến môi trường (DORIS_PASSWORD, DBT_NETWORK…) xem dbt_doris.sh.
 #
-# Install (hourly, 15 minutes past — after the */5 MySQL sync has settled):
-#   crontab -e
-#   15 * * * * /home/smartbi/casumina/dbt_project/scripts/dbt_cron.sh >/dev/null 2>&1
+# Cài (mỗi giờ, phút 15):
+#   15 * * * * DBT_NETWORK=host /đường/dẫn/DBT-CSM/scripts/dbt_cron.sh >/dev/null 2>&1
 #
 # Exit codes:
-#   0  build + tests passed, or another run already holds the lock
-#   1  dbt reported a failure
+#   0  build + test đạt, hoặc đang có lần chạy khác giữ khoá
+#   1  dbt báo lỗi
 
 set -uo pipefail
 
@@ -26,8 +25,7 @@ LOG_FILE="$LOG_DIR/dbt_$(date +%Y%m%d).log"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"; }
 
-# Skip rather than queue: a build takes ~15s, so an overlap means something is
-# wrong and piling up more runs would only make it worse.
+# Bỏ qua thay vì xếp hàng: một lần dựng ~1 phút, chồng lần chạy nghĩa là đang có sự cố.
 exec 9>"$LOCK_FILE"
 if ! flock -n 9; then
   log "another run holds the lock, skipping"
@@ -37,7 +35,7 @@ fi
 START=$(date +%s)
 log "==== dbt build start ===="
 
-if "$PROJECT_DIR/scripts/dbt.sh" build >>"$LOG_FILE" 2>&1; then
+if "$PROJECT_DIR/scripts/dbt_doris.sh" build >>"$LOG_FILE" 2>&1; then
   STATUS=0
   log "dbt build OK (took $(( $(date +%s) - START ))s)"
 else

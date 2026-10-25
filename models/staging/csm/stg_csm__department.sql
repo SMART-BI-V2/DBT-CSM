@@ -1,7 +1,6 @@
 {{ config(tags=['staging']) }}
 
--- CSM has never populated `department` upstream (source(csm, department) is
--- permanently empty). Business asked to keep a placeholder department list
--- long-term instead of an empty dimension; see seeds/seed_department.csv.
-select *
+-- CSM chưa từng nạp `department` (nguồn luôn rỗng). Nghiệp vụ yêu cầu giữ danh sách
+-- phòng ban tạm (seeds/seed_department.csv) thay vì để dimension rỗng.
+select `RowID`, {{ csm_trim('`Code`') }} as `Code`, `Description`, {{ csm_trim('`SourceCode`') }} as `SourceCode`
 from {{ ref('seed_department') }}

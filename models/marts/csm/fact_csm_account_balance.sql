@@ -1,16 +1,17 @@
-{{ config(tags=['csm']) }}
+{{ config(tags=['csm'], duplicate_key=['account_no'], distributed_by=['account_no']) }}
 
+-- Số dư tài khoản. Nguồn balance_account hiện rỗng (dev lẫn prod).
 select
-  "AccountNo"::text as account_no,
-  max("AccountName")::text as account_name,
-  max("AccountType")::integer as account_type,
-  coalesce("SourceCode",'')::text as factory_code,
-  {{ csm_period_columns('"PostingDate"') }},
-  sum(coalesce("BegDebitAmount",0))::numeric(18,2) as beg_debit_amount,
-  sum(coalesce("BegCreditAmount",0))::numeric(18,2) as beg_credit_amount,
-  sum(coalesce("DebitAmount",0))::numeric(18,2) as debit_amount,
-  sum(coalesce("CreditAmount",0))::numeric(18,2) as credit_amount,
-  sum(coalesce("EndDebitAmount",0))::numeric(18,2) as end_debit_amount,
-  sum(coalesce("EndCreditAmount",0))::numeric(18,2) as end_credit_amount
+  CAST(`AccountNo` AS VARCHAR(64)) as account_no,
+  CAST(max(`AccountName`) AS VARCHAR(512)) as account_name,
+  CAST(max(`AccountType`) AS INT) as account_type,
+  CAST(coalesce(`SourceCode`, '') AS VARCHAR(16)) as factory_code,
+  {{ csm_period_columns('`PostingDate`') }},
+  CAST(sum(coalesce(`BegDebitAmount`, 0)) AS DECIMAL(18,2)) as beg_debit_amount,
+  CAST(sum(coalesce(`BegCreditAmount`, 0)) AS DECIMAL(18,2)) as beg_credit_amount,
+  CAST(sum(coalesce(`DebitAmount`, 0)) AS DECIMAL(18,2)) as debit_amount,
+  CAST(sum(coalesce(`CreditAmount`, 0)) AS DECIMAL(18,2)) as credit_amount,
+  CAST(sum(coalesce(`EndDebitAmount`, 0)) AS DECIMAL(18,2)) as end_debit_amount,
+  CAST(sum(coalesce(`EndCreditAmount`, 0)) AS DECIMAL(18,2)) as end_credit_amount
 from {{ ref('stg_csm__balance_account') }}
-group by 1,4,5,6
+group by 1, 4, 5, 6

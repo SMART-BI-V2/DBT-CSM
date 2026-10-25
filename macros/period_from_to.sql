@@ -1,4 +1,8 @@
 {% macro csm_period_columns(posting_date) -%}
-    date_trunc('month', {{ posting_date }})::date as period_from,
-    (date_trunc('month', {{ posting_date }}) + interval '1 month - 1 day')::date as period_to
+    CAST(DATE_TRUNC({{ posting_date }}, 'month') AS DATE) AS period_from,
+    CAST(LAST_DAY({{ posting_date }}) AS DATE) AS period_to
+{%- endmacro %}
+
+{% macro csm_month(posting_date) -%}
+    CAST(DATE_TRUNC({{ posting_date }}, 'month') AS DATE)
 {%- endmacro %}

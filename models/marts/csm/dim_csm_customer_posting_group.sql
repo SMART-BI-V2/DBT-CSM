@@ -1,3 +1,4 @@
-{{ config(tags=['csm']) }}
+{{ config(tags=['csm'], duplicate_key=['posting_group_code'], distributed_by=['posting_group_code']) }}
 
-select "Code"::text as posting_group_code, "Description"::text as posting_group_name from {{ ref('stg_csm__customer_posting_group') }}
+select CAST(`Code` AS VARCHAR(64)) as posting_group_code, CAST(`Description` AS VARCHAR(512)) as posting_group_name
+from {{ ref('stg_csm__customer_posting_group') }}

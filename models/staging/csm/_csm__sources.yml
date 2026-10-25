@@ -2,8 +2,8 @@ version: 2
 
 sources:
   - name: csm
-    description: CSM operational-source tables exposed in casumina_prod via postgres_fdw.
-    schema: public_csm_src
+    description: Bảng ERP Casumina do đối tác nạp vào Doris (CSDL raw_stage — vùng của đối tác, chỉ đọc).
+    schema: "{{ var('csm_source_schema') }}"
     tables:
       - name: source_code
       - name: item_category
@@ -28,6 +28,6 @@ sources:
       - name: production_planning
       - name: customer_balance
       - name: balance_account
-      - name: business_planning
-      - name: business_planning_actual
       - name: company_profit
+      # business_planning / business_planning_actual: chưa có trong raw_stage
+      # ⇒ đọc qua macro csm_source_or_empty (xem stg_csm__business_planning*.sql).

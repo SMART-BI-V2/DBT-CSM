@@ -1,17 +1,9 @@
-{{ config(tags=['csm']) }}
+{{ config(tags=['csm'], duplicate_key=['period_date', 'product_code'], distributed_by=['product_code']) }}
 
+-- Sản lượng nhập/xuất/tồn thành phẩm theo SP × tháng — cùng số liệu với fact_csm_fg_inventory
+-- (giữ tên bảng + cột của bản cũ cho project SmartBI đang dùng). Xem giải thích ở fg_inventory.
 select
-  "PostingDate"::date as period_date,
-  "ItemNo"::text as product_code,
-  sum(coalesce("QuantityBegin",0))::numeric(18,4) as qty_begin,
-  sum(coalesce("ValueBegin",0))::numeric(18,2) as val_begin,
-  sum(coalesce("QuantityInput",0))::numeric(18,4) as qty_input,
-  sum(coalesce("ValueInput",0))::numeric(18,2) as val_input,
-  sum(coalesce("QuantityOutput",0))::numeric(18,4) as qty_output,
-  sum(coalesce("ValueOutput",0))::numeric(18,2) as val_output,
-  sum(coalesce("QuantityEnding",0))::numeric(18,4) as qty_ending,
-  sum(coalesce("ValueEnding",0))::numeric(18,2) as val_ending,
-  sum(coalesce("QuantityInland",0))::numeric(18,4) as qty_inland,
-  sum(coalesce("QuantityExport",0))::numeric(18,4) as qty_export
-from {{ ref('stg_csm__production_entry') }}
-group by 1,2
+  period_date, product_code,
+  qty_begin, val_begin, qty_input, val_input, qty_output, val_output, qty_ending, val_ending,
+  qty_inland, qty_export, qty_input_total, qty_output_total
+from {{ ref('fact_csm_fg_inventory') }}
