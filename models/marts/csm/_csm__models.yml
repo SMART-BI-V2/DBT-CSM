@@ -156,7 +156,7 @@ models:
         description: Mã nhân viên.
         tests: [not_null, unique]
       - name: gender
-        description: Mã giới tính theo hệ thống nhân sự (0 / 1).
+        description: Giới tính (0 = Nữ, 1 = Nam — quy ước của báo cáo nhân sự).
       - name: department_code
         description: Mã phòng ban (→ dim_csm_department). Có nhân viên mang mã không có trong danh mục phòng ban.
       - name: factory_code
