@@ -15,6 +15,10 @@ sources:
       - name: customer_template
       - name: customer_posting_group
       - name: department
+      - name: hr_department
+        description: Phòng ban của hệ thống nhân sự (đối tác nạp từ 23/10/2026; bảng `department` vẫn rỗng).
+      - name: hr_employee
+        description: Hồ sơ nhân viên (đối tác nạp 28/10/2026). Có thông tin cá nhân (họ tên, địa chỉ, điện thoại, email, ngày sinh) — mart KHÔNG lấy các cột này.
       - name: item_subgroup_1
       - name: manufacturer_costing
       - name: manufacturer_material_costing

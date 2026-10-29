@@ -137,7 +137,7 @@ models:
         description: Tên nhóm.
 
   - name: dim_csm_department
-    description: Phòng ban (bảng department của ERP — hiện ERP chưa nạp, bảng rỗng).
+    description: Phòng ban (bảng hr_department của hệ thống nhân sự).
     columns:
       - name: department_code
         description: Mã phòng ban.
@@ -146,6 +146,31 @@ models:
         description: Tên phòng ban.
       - name: factory_code
         description: Đơn vị trực thuộc (→ dim_csm_factory).
+
+  - name: dim_csm_employee
+    description: >-
+      Nhân viên (hr_employee), mỗi dòng một nhân viên. Không có thông tin cá nhân (họ tên, địa chỉ,
+      điện thoại, email, ngày sinh). Đếm nhân sự đang làm = is_active = 1.
+    columns:
+      - name: employee_no
+        description: Mã nhân viên.
+        tests: [not_null, unique]
+      - name: gender
+        description: Mã giới tính theo hệ thống nhân sự (0 / 1).
+      - name: department_code
+        description: Mã phòng ban (→ dim_csm_department). Có nhân viên mang mã không có trong danh mục phòng ban.
+      - name: factory_code
+        description: Đơn vị / xí nghiệp (→ dim_csm_factory). Mã 04, 05 có trong hồ sơ nhân viên nhưng không có trong danh mục xí nghiệp ERP.
+      - name: working_date
+        description: Ngày vào làm (NULL khi nguồn để trống).
+      - name: termination_date
+        description: Ngày nghỉ việc (NULL = chưa nghỉ; ngày trống 1900-01-01 của ERP được đưa về NULL).
+      - name: termination_reason
+        description: Lý do nghỉ việc.
+      - name: is_active
+        description: 1 = đang làm (chưa có ngày nghỉ việc), 0 = đã nghỉ.
+      - name: system_date
+        description: Ngày hệ thống nhân sự cập nhật bản ghi.
 
   - name: dim_csm_item_subgroup
     description: Nhóm con cấp 1 của hàng hoá.
