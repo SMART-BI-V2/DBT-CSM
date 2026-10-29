@@ -427,7 +427,11 @@ models:
         description: Doanh thu dịch vụ (VND).
 
   - name: fact_csm_customer_profit
-    description: Lãi theo khách hàng × sản phẩm × tháng (nguồn thưa — chỉ có một số kỳ).
+    description: >
+      Lãi theo khách hàng × sản phẩm × tháng, lấy nguyên từ ERP (customer_profit). Nghĩa số liệu CHƯA rõ:
+      profit = 0 cả tháng khi ERP chưa tính (vd 09/2026), có tháng âm lớn (08/2026 −49 tỷ); qty có dòng
+      không phải số lượng. KHÔNG dùng làm lãi gộp — lãi gộp theo SP ở fact_csm_product_profit,
+      toàn công ty ở company_profit_flat chỉ tiêu 20.
     columns:
       - name: customer_code
         description: Khách hàng.
@@ -659,8 +663,10 @@ models:
             columns: [customer_code, period_from]
     description: >
       Công nợ phải thu theo khách hàng × tháng. amount/debit/credit = phát sinh trong tháng
-      (nguyên tệ), *_lcy = quy đổi VND. balance_end_lcy = DƯ NỢ CUỐI THÁNG (VND); có đủ mọi tháng
-      cho khách còn dư nợ. Tháng 12 của năm trước kỳ dữ liệu chứa số dư đầu kỳ ERP.
+      (nguyên tệ), *_lcy = quy đổi VND. balance_end_lcy = DƯ NỢ CUỐI THÁNG (VND), là số RÒNG (âm khi
+      khách trả trước); có đủ mọi tháng cho khách còn dư nợ. Tháng 12 của năm trước kỳ dữ liệu chứa số
+      dư đầu kỳ ERP. "Công nợ phải thu" theo chuẩn kế toán = SUM(receivable_lcy) (dư Nợ TK 131);
+      khách trả trước = SUM(prepayment_lcy) (dư Có); balance_end_lcy = receivable_lcy − prepayment_lcy.
     columns:
       - name: customer_code
         description: Khách hàng.
@@ -684,6 +690,14 @@ models:
         description: Dư nợ cuối tháng, nguyên tệ.
       - name: balance_end_lcy
         description: Dư nợ cuối tháng, VND.
+      - name: receivable
+        description: Phải thu cuối tháng (phần dư Nợ, ≥ 0), nguyên tệ.
+      - name: prepayment
+        description: Khách trả trước cuối tháng (phần dư Có, ghi dương), nguyên tệ.
+      - name: receivable_lcy
+        description: Phải thu khách hàng cuối tháng (dư Nợ TK 131, ≥ 0), VND — dùng cho "Công nợ phải thu".
+      - name: prepayment_lcy
+        description: Người mua trả tiền trước cuối tháng (dư Có TK 131, ghi dương), VND.
 
   - name: fact_csm_account_balance
     description: Số dư tài khoản kế toán theo tháng (nguồn ERP hiện chưa có dữ liệu).
@@ -748,7 +762,12 @@ models:
         description: Lợi nhuận.
 
   - name: company_profit_flat
-    description: Báo cáo kết quả kinh doanh toàn công ty theo dòng chỉ tiêu (ord 1–18) × tháng.
+    description: >
+      Báo cáo kết quả kinh doanh toàn công ty theo dòng chỉ tiêu (ord 1–18) × tháng; account_name = mã
+      chỉ tiêu ERP (01, 02, 10, 11, 20, 22, 23, 24, 25, 23b, 26, 30, 31, 32, 40, 50, 51, 52, 60). Công thức
+      đúng ở mọi tháng: 10 = 01 − 02; 20 = 10 − 11; 30 = 20 + 22 − 23 − 25 − 26; 40 = 31 − 32; 50 = 30 + 40;
+      60 = 50 − 51 + 52 (ERP ghi chỉ tiêu 52 thuế TNDN hoãn lại NGƯỢC DẤU mẫu B02-DN ⇒ cộng, không trừ).
+      Đây là số sổ kế toán — chuẩn cho KPI tổng; doanh thu hoá đơn (fact_csm_sales) không bằng chỉ tiêu 01.
     columns:
       - name: source_row_id
         description: RowID dòng nguồn.

@@ -39,6 +39,11 @@ select
   CAST(dl AS DECIMAL(18,2)) as debit_amount_lcy,
   CAST(cl AS DECIMAL(18,2)) as credit_amount_lcy,
   CAST(b AS DECIMAL(18,2)) as balance_end,
-  CAST(bl AS DECIMAL(18,2)) as balance_end_lcy
+  CAST(bl AS DECIMAL(18,2)) as balance_end_lcy,
+  -- Chuẩn kế toán tách TK 131: dư Nợ = phải thu, dư Có = người mua trả tiền trước (cả hai ghi dương).
+  CAST(greatest(b, 0) AS DECIMAL(18,2)) as receivable,
+  CAST(greatest(-b, 0) AS DECIMAL(18,2)) as prepayment,
+  CAST(greatest(bl, 0) AS DECIMAL(18,2)) as receivable_lcy,
+  CAST(greatest(-bl, 0) AS DECIMAL(18,2)) as prepayment_lcy
 from bal
 where has_src or abs(b) >= 0.5 or abs(bl) >= 0.5

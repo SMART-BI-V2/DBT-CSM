@@ -20,6 +20,18 @@ with chk as (
   union all
   select 'customer_balance.amount_lcy', (select sum(amount_lcy) from {{ ref('fact_csm_customer_balance') }}),
          (select sum(`AmountLCY`) from {{ source('csm', 'customer_balance') }})
+  union all
+  select 'service_invoice.amount', (select sum(amount) from {{ ref('fact_csm_service_invoice') }}),
+         (select sum(`Amount`) from {{ source('csm', 'service_invoice') }})
+  union all
+  select 'company_profit_flat.amount', (select sum(amount) from {{ ref('company_profit_flat') }}),
+         (select sum(`Amount`) from {{ source('csm', 'company_profit') }})
+  union all
+  select 'customer_profit.profit', (select sum(profit) from {{ ref('fact_csm_customer_profit') }}),
+         (select sum(`Profit`) from {{ source('csm', 'customer_profit') }})
+  union all
+  select 'production_plan.val_output', (select sum(val_output) from {{ ref('fact_csm_production_plan') }}),
+         (select sum(`ValueOutput`) from {{ source('csm', 'production_planning') }})
 )
 -- ngưỡng tương đối: mart làm tròn 2 chữ số từng dòng, cộng dồn hàng chục triệu dòng lệch vài đồng
 select k, mart, src from chk
