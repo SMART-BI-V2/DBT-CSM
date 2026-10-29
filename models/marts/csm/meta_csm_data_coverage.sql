@@ -96,6 +96,20 @@ with c as (
     (select max(period_from) from {{ ref('fact_csm_business_planning') }}) as period_last,
     (select CAST(max(`PostingDate`) AS DATE) from {{ ref('stg_csm__business_planning') }}) as last_posting_date,
     (select count(*) from {{ ref('fact_csm_business_planning') }}) as row_count
+  union all
+  -- kế hoạch: last_posting_date = ngày tải bản kế hoạch kỳ cuối lên
+  select 'fact_csm_plan_company' as table_name, 'Kế hoạch SXKD cấp công ty (tệp KHSX tải lên)' as description,
+    (select min(period_from) from {{ ref('fact_csm_plan_company') }}) as period_first,
+    (select max(period_from) from {{ ref('fact_csm_plan_company') }}) as period_last,
+    (select CAST(max(systemdate) AS DATE) from {{ ref('fact_csm_plan_company') }}) as last_posting_date,
+    (select count(*) from {{ ref('fact_csm_plan_company') }}) as row_count
+  union all
+  -- kế hoạch: last_posting_date = ngày tải bản kế hoạch kỳ cuối lên
+  select 'fact_csm_plan_factory_product' as table_name, 'Kế hoạch SXKD xí nghiệp theo sản phẩm (tệp KHSX tải lên)' as description,
+    (select min(period_from) from {{ ref('fact_csm_plan_factory_product') }}) as period_first,
+    (select max(period_from) from {{ ref('fact_csm_plan_factory_product') }}) as period_last,
+    (select CAST(max(systemdate) AS DATE) from {{ ref('fact_csm_plan_factory_product') }}) as last_posting_date,
+    (select count(*) from {{ ref('fact_csm_plan_factory_product') }}) as row_count
 )
 select
   CAST(table_name AS VARCHAR(64)) as table_name,

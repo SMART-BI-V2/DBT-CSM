@@ -52,3 +52,15 @@
      from {{ rel }}
      where `PostingDate` = (select max(`PostingDate`) from {{ rel }} where DAY(`PostingDate`) = 1))
 {%- endmacro %}
+
+{#- Bảng của KHO NHẬP (dữ liệu tải từ Excel qua SmartBI — CSDL var('intake_schema'), mặc định `intake`).
+    Kho chỉ có bảng sau lần nhập đầu tiên (app tự tạo) ⇒ chưa có thì trả tập rỗng đúng kiểu. -#}
+{% macro intake_source_or_empty(table_name, columns) -%}
+    {%- set rel = adapter.get_relation(database=none, schema=var('intake_schema'), identifier=table_name) -%}
+    {%- if rel is not none -%}
+        SELECT {% for c in columns %}`{{ c[0] }}`{{ ", " if not loop.last }}{% endfor %} FROM {{ rel }}
+    {%- else -%}
+        SELECT {% for c in columns %}CAST(NULL AS {{ c[1] }}) AS `{{ c[0] }}`{{ ", " if not loop.last }}{% endfor %}
+        FROM (SELECT 1 AS d) AS empty_source WHERE 1 = 0
+    {%- endif -%}
+{%- endmacro %}

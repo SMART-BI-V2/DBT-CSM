@@ -45,3 +45,5 @@ vars:
   csm_quiet_seconds: 120      # nguồn phải không bị ghi trong ngần này giây
   csm_quiet_max_wait: 1200    # chờ tối đa (giây) rồi báo lỗi
   csm_guard_schema: ops       # nơi ghi mốc kiểm tra tạm (không làm bẩn CSDL mart)
+  # Kho nhập dữ liệu Excel qua SmartBI (mô-đun dataIntake). Thử nghiệm: --vars '{intake_schema: tmp_intake_test}'
+  intake_schema: intake

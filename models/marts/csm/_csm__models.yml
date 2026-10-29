@@ -817,3 +817,209 @@ models:
         description: Số dòng của bảng.
       - name: built_at
         description: Thời điểm dựng lại mart.
+
+  - name: fact_csm_plan_company
+    tests:
+      - unique_combination:
+          arguments:
+            columns: [period_from, ord]
+    description: "Kế hoạch sản xuất kinh doanh cấp CÔNG TY theo tháng (sheet kh_Cty của tệp KHSX do P. Kế hoạch – Đầu tư ban hành, tải lên qua SmartBI › Nhập dữ liệu Excel; mỗi kỳ dùng bản điều chỉnh mới nhất). Dạng NGANG, cùng tên cột bảng company_planning bản dev. Dòng = chỉ tiêu (categoryname, theo thứ tự ord, nhóm theo section: sxcn giá trị SXCN, sxcn_actual giá trị SXCN giá thực tế, revenue doanh thu, labor lao động – tiền lương, quantity sản lượng hiện vật). Cột theo đơn vị: _dn 02, _hm 03, _bl 07, _rad 06, _rad2 08, _vp 01; tổng = instocktotal / outstock_total / export_total. ĐƠN VỊ TÍNH ở cột unit: triệu đồng (giá trị, doanh thu) hoặc NGHÌN (sản lượng hiện vật). Đây là số KẾ HOẠCH; thực hiện xem fact_csm_sales, company_profit_flat, fact_csm_fg_inventory."
+    columns:
+      - name: period_from
+        description: "Ngày đầu tháng kế hoạch."
+      - name: planningyear
+        description: "Năm kế hoạch."
+      - name: planningmonth
+        description: "Tháng kế hoạch."
+      - name: revision
+        description: "Lần điều chỉnh của bản kế hoạch (0 = bản đầu, 1 = Đ/c 1 …). Mỗi kỳ chỉ một bản hiệu lực."
+      - name: batch_id
+        description: "Mã lần nhập (lịch sử ở SmartBI › Nhập dữ liệu Excel)."
+      - name: ord
+        description: "Thứ tự dòng chỉ tiêu trong tệp."
+      - name: category_code
+        description: "Mã chỉ tiêu ổn định (từ tên chỉ tiêu; dòng con trùng tên được ghép tên dòng cha)."
+      - name: categoryname
+        description: "Tên chỉ tiêu như trong tệp (vd \"I.a.Giá trị SXCN\", \"- Doanh thu SXCN\", \"Lốp Xe máy\")."
+      - name: section
+        description: "Mục — sxcn | sxcn_actual | revenue | labor | quantity."
+      - name: unit
+        description: "Đơn vị tính của dòng — \"triệu đồng\", \"nghìn\" (sản lượng hiện vật) hoặc trống (lao động, lương)."
+      - name: instocktotal
+        description: "Kế hoạch SẢN XUẤT — tổng công ty."
+      - name: instock_dn
+        description: "Kế hoạch SẢN XUẤT — XN Cao su Đồng Nai (02)."
+      - name: instock_hm
+        description: "Kế hoạch SẢN XUẤT — XN Cao su Hóc Môn (03)."
+      - name: instock_bl
+        description: "Kế hoạch SẢN XUẤT — XN Cao su Bình Lợi (07)."
+      - name: instock_rad
+        description: "Kế hoạch SẢN XUẤT — XN Lốp Radial (06)."
+      - name: instock_rad2
+        description: "Kế hoạch SẢN XUẤT — XN Lốp Radial 2 – Bình Dương (08)."
+      - name: instock_vp
+        description: "Kế hoạch SẢN XUẤT — Văn phòng (01)."
+      - name: outstock_total
+        description: "Kế hoạch TIÊU THỤ — tổng công ty."
+      - name: outstock_dn
+        description: "Kế hoạch TIÊU THỤ — XN Cao su Đồng Nai (02)."
+      - name: outstock_hm
+        description: "Kế hoạch TIÊU THỤ — XN Cao su Hóc Môn (03)."
+      - name: outstock_bl
+        description: "Kế hoạch TIÊU THỤ — XN Cao su Bình Lợi (07)."
+      - name: outstock_rad
+        description: "Kế hoạch TIÊU THỤ — XN Lốp Radial (06)."
+      - name: outstock_rad2
+        description: "Kế hoạch TIÊU THỤ — XN Lốp Radial 2 – Bình Dương (08)."
+      - name: outstock_vp
+        description: "Kế hoạch TIÊU THỤ — Văn phòng (01). Tệp không có cột này (luôn trống)."
+      - name: export_total
+        description: "Kế hoạch XUẤT KHẨU (trong tiêu thụ) — tổng công ty; trống ở mục doanh thu (xem revenue_after_discount_*)."
+      - name: export_dn
+        description: "Kế hoạch XUẤT KHẨU (trong tiêu thụ) — XN Cao su Đồng Nai (02); trống ở mục doanh thu (xem revenue_after_discount_*)."
+      - name: export_hm
+        description: "Kế hoạch XUẤT KHẨU (trong tiêu thụ) — XN Cao su Hóc Môn (03); trống ở mục doanh thu (xem revenue_after_discount_*)."
+      - name: export_bl
+        description: "Kế hoạch XUẤT KHẨU (trong tiêu thụ) — XN Cao su Bình Lợi (07); trống ở mục doanh thu (xem revenue_after_discount_*)."
+      - name: export_rad
+        description: "Kế hoạch XUẤT KHẨU (trong tiêu thụ) — XN Lốp Radial (06); trống ở mục doanh thu (xem revenue_after_discount_*)."
+      - name: export_rad2
+        description: "Kế hoạch XUẤT KHẨU (trong tiêu thụ) — XN Lốp Radial 2 – Bình Dương (08); trống ở mục doanh thu (xem revenue_after_discount_*)."
+      - name: export_vp
+        description: "Kế hoạch XUẤT KHẨU (trong tiêu thụ) — Văn phòng (01); trống ở mục doanh thu (xem revenue_after_discount_*). Tệp không có cột này (luôn trống)."
+      - name: revenue_after_discount_total
+        description: "Mục Doanh thu — doanh thu kế hoạch ĐÃ TRỪ CHIẾT KHẤU, tổng công ty (nhóm cột \"trong đó xuất khẩu\" của tệp ở dòng doanh thu, ghi chú DT-CK)."
+      - name: revenue_after_discount_dn
+        description: "Mục Doanh thu — doanh thu kế hoạch ĐÃ TRỪ CHIẾT KHẤU, XN Cao su Đồng Nai (02) (nhóm cột \"trong đó xuất khẩu\" của tệp ở dòng doanh thu, ghi chú DT-CK)."
+      - name: revenue_after_discount_hm
+        description: "Mục Doanh thu — doanh thu kế hoạch ĐÃ TRỪ CHIẾT KHẤU, XN Cao su Hóc Môn (03) (nhóm cột \"trong đó xuất khẩu\" của tệp ở dòng doanh thu, ghi chú DT-CK)."
+      - name: revenue_after_discount_bl
+        description: "Mục Doanh thu — doanh thu kế hoạch ĐÃ TRỪ CHIẾT KHẤU, XN Cao su Bình Lợi (07) (nhóm cột \"trong đó xuất khẩu\" của tệp ở dòng doanh thu, ghi chú DT-CK)."
+      - name: revenue_after_discount_rad
+        description: "Mục Doanh thu — doanh thu kế hoạch ĐÃ TRỪ CHIẾT KHẤU, XN Lốp Radial (06) (nhóm cột \"trong đó xuất khẩu\" của tệp ở dòng doanh thu, ghi chú DT-CK)."
+      - name: revenue_after_discount_rad2
+        description: "Mục Doanh thu — doanh thu kế hoạch ĐÃ TRỪ CHIẾT KHẤU, XN Lốp Radial 2 – Bình Dương (08) (nhóm cột \"trong đó xuất khẩu\" của tệp ở dòng doanh thu, ghi chú DT-CK)."
+      - name: revenue_after_discount_vp
+        description: "Mục Doanh thu — doanh thu kế hoạch ĐÃ TRỪ CHIẾT KHẤU, Văn phòng (01) (nhóm cột \"trong đó xuất khẩu\" của tệp ở dòng doanh thu, ghi chú DT-CK). Tệp không có cột này (luôn trống)."
+      - name: systemdate
+        description: "Thời điểm tải bản kế hoạch lên."
+
+  - name: fact_csm_plan_company_value
+    tests:
+      - unique_combination:
+          arguments:
+            columns: [period_from, ord, measure, entity_code]
+    description: "Kế hoạch SXKD cấp CÔNG TY dạng DỌC (cùng nguồn fact_csm_plan_company): mỗi dòng = chỉ tiêu × nhóm đo × đơn vị. Dùng khi cần cơ cấu / tỷ trọng theo đơn vị (lọc entity_code <> 'total' rồi chia cho tổng). measure: production (sản xuất), sales (tiêu thụ), export (xuất khẩu), revenue_after_discount (doanh thu đã trừ chiết khấu — chỉ ở mục revenue). Đơn vị tính theo cột unit."
+    columns:
+      - name: period_from
+        description: "Ngày đầu tháng kế hoạch."
+      - name: planningyear
+        description: "Năm kế hoạch."
+      - name: planningmonth
+        description: "Tháng kế hoạch."
+      - name: revision
+        description: "Lần điều chỉnh của bản kế hoạch (0 = bản đầu, 1 = Đ/c 1 …). Mỗi kỳ chỉ một bản hiệu lực."
+      - name: ord
+        description: "Thứ tự dòng chỉ tiêu trong tệp."
+      - name: category_code
+        description: "Mã chỉ tiêu ổn định."
+      - name: categoryname
+        description: "Tên chỉ tiêu như trong tệp."
+      - name: section
+        description: "Mục — sxcn | sxcn_actual | revenue | labor | quantity."
+      - name: unit
+        description: "Đơn vị tính — \"triệu đồng\", \"nghìn\" hoặc trống."
+      - name: measure
+        description: "Nhóm đo — production | sales | export | revenue_after_discount."
+      - name: entity_code
+        description: "Đơn vị — 'total' (toàn công ty) hoặc mã xí nghiệp 01, 02, 03, 06, 07, 08 (dim_csm_factory)."
+      - name: entity_name
+        description: "Tên đơn vị."
+      - name: value
+        description: "Giá trị kế hoạch (đơn vị tính theo cột unit)."
+
+  - name: fact_csm_plan_factory_product
+    tests:
+      - unique_combination:
+          arguments:
+            columns: [period_from, factory_code, product_code]
+    description: "Kế hoạch SXKD cấp XÍ NGHIỆP theo SẢN PHẨM, theo tháng (sheet kh_xnhm, kh_xnbd, kh_xnbl, kh_xndn, kh_xnra của tệp KHSX; tương ứng bảng ERP planning_manu_detail). Sản lượng tính bằng CHIẾC; giá bán, giá chuẩn, tiền lương tính bằng đồng/chiếc. So kế hoạch với thực hiện: nối product_code với fact_csm_fg_inventory (sản xuất nhập kho) / fact_csm_sales (tiêu thụ) cùng tháng. Đây là kế hoạch ĐƯỢC DUYỆT (khác bảng kế hoạch ERP fact_csm_production_plan)."
+    columns:
+      - name: period_from
+        description: "Ngày đầu tháng kế hoạch."
+      - name: planningyear
+        description: "Năm kế hoạch."
+      - name: planningmonth
+        description: "Tháng kế hoạch."
+      - name: revision
+        description: "Lần điều chỉnh của bản kế hoạch (0 = bản đầu, 1 = Đ/c 1 …). Mỗi kỳ chỉ một bản hiệu lực."
+      - name: batch_id
+        description: "Mã lần nhập."
+      - name: factory_code
+        description: "Mã xí nghiệp (02 Đồng Nai, 03 Hóc Môn, 06 Radial, 07 Bình Lợi, 08 Radial 2 – Bình Dương)."
+      - name: product_code
+        description: "Mã sản phẩm (MSP, giữ số 0 đầu; khớp dim_csm_product)."
+      - name: product_name
+        description: "Tên sản phẩm như trong tệp kế hoạch."
+      - name: product_group
+        description: "Nhóm sản phẩm trong tệp kế hoạch (dòng nhóm gần nhất phía trên, vd \"Nhóm Tubeless\")."
+      - name: ord
+        description: "Thứ tự dòng trong sheet."
+      - name: begin_stock
+        description: "Tồn đầu kỳ kế hoạch (chiếc)."
+      - name: instock
+        description: "Sản xuất kế hoạch (chiếc)."
+      - name: outstock
+        description: "Tiêu thụ kế hoạch — tổng (chiếc)."
+      - name: outstock_export
+        description: "Tiêu thụ kế hoạch — xuất khẩu (chiếc)."
+      - name: outstock_inland
+        description: "Tiêu thụ kế hoạch — nội địa (chiếc)."
+      - name: ending_stock
+        description: "Tồn cuối kỳ kế hoạch (chiếc)."
+      - name: price
+        description: "Giá bán kế hoạch (đồng/chiếc)."
+      - name: std_price
+        description: "Giá chuẩn (đồng/chiếc)."
+      - name: wage
+        description: "Tiền lương đơn vị (đồng/chiếc)."
+      - name: systemdate
+        description: "Thời điểm tải bản kế hoạch lên."
+
+  - name: fact_csm_plan_factory_line
+    tests:
+      - unique_combination:
+          arguments:
+            columns: [period_from, factory_code, line_code]
+    description: "Dòng NHÓM và dòng TỔNG HỢP của kế hoạch xí nghiệp (sheet kh_xn*). line_kind = group: tổng theo nhóm sản phẩm (vd \"Lốp Xe Máy\", \"Nhóm Tubeless\" — chiếc; tương ứng ERP planning_manu_total). line_kind = summary: chỉ tiêu tổng hợp của xí nghiệp — i.a giá trị SXCN (instock, triệu đồng), ii.a / ii.b doanh thu SXCN chưa / đã chiết khấu (outstock = tổng, outstock_export, outstock_inland; triệu đồng), iii lao động – tiền lương (quỹ lương triệu đồng, lao động người, lương bình quân triệu đồng/người)."
+    columns:
+      - name: period_from
+        description: "Ngày đầu tháng kế hoạch."
+      - name: planningyear
+        description: "Năm kế hoạch."
+      - name: planningmonth
+        description: "Tháng kế hoạch."
+      - name: revision
+        description: "Lần điều chỉnh của bản kế hoạch (0 = bản đầu, 1 = Đ/c 1 …). Mỗi kỳ chỉ một bản hiệu lực."
+      - name: factory_code
+        description: "Mã xí nghiệp."
+      - name: line_kind
+        description: "group (nhóm sản phẩm) | summary (chỉ tiêu tổng hợp)."
+      - name: ord
+        description: "Thứ tự dòng trong sheet."
+      - name: line_code
+        description: "Mã dòng — nhom.<tên nhóm> hoặc mã mục (i.a, ii.a, iii …; dòng con <mục>.<tên>)."
+      - name: line_name
+        description: "Tên dòng như trong tệp."
+      - name: begin_stock
+        description: "Tồn đầu kỳ kế hoạch (chiếc với dòng nhóm; triệu đồng với dòng giá trị/doanh thu)."
+      - name: instock
+        description: "Sản xuất kế hoạch (chiếc với dòng nhóm; triệu đồng với dòng giá trị/doanh thu)."
+      - name: outstock
+        description: "Tiêu thụ kế hoạch — tổng (chiếc với dòng nhóm; triệu đồng với dòng giá trị/doanh thu)."
+      - name: outstock_export
+        description: "Tiêu thụ kế hoạch — xuất khẩu (chiếc với dòng nhóm; triệu đồng với dòng giá trị/doanh thu)."
+      - name: outstock_inland
+        description: "Tiêu thụ kế hoạch — nội địa (chiếc với dòng nhóm; triệu đồng với dòng giá trị/doanh thu)."
+      - name: ending_stock
+        description: "Tồn cuối kỳ kế hoạch (chiếc với dòng nhóm; triệu đồng với dòng giá trị/doanh thu)."
