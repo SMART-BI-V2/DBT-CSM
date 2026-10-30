@@ -364,9 +364,12 @@ models:
   - name: fact_csm_sales
     description: >
       Doanh thu bán hàng chi tiết từng dòng hoá đơn. doc_type là mã ERP (0, 5 = bán hàng; 12 = điều
-      chỉnh / giảm giá hoá đơn, amount âm) — KHÔNG phải inland/export. Doanh thu = SUM(amount)
-      (đã gồm điều chỉnh). Dòng điều chỉnh (is_adjustment = 1) có qty = 0, unit_price NULL.
-      Tổng doanh thu công ty = SUM(amount) + SUM(fact_csm_service_invoice.amount).
+      chỉnh / giảm giá hoá đơn, amount âm) — KHÔNG phải inland/export.
+      DOANH THU BÁN HÀNG (định nghĩa CSM, 30/10/2026) = SUM(sales_gross): VATBaseAmount + LineDiscountAmount
+      của các dòng không phải mặt hàng nhóm kho 'CK' — đã GỒM chiết khấu dòng và chiết khấu thương mại.
+      Chiết khấu = SUM(line_discount); chiết khấu thương mại = SUM(trade_discount).
+      Tổng doanh thu công ty = SUM(sales_gross) + SUM(fact_csm_service_invoice.amount).
+      SUM(amount) trên mọi dòng = doanh thu SAU chiết khấu thương mại (không phải số CSM báo cáo).
     columns:
       - name: customer_code
         description: Khách hàng.
@@ -405,6 +408,12 @@ models:
         description: Chiết khấu dòng.
       - name: is_adjustment
         description: 1 = dòng điều chỉnh tiền (giảm giá, sai thuế…), 0 = dòng bán hàng.
+      - name: is_trade_discount
+        description: "1 = dòng chiết khấu thương mại (mặt hàng nhóm kho 'CK'), 0 = dòng bán hàng."
+      - name: sales_gross
+        description: "Doanh thu bán hàng theo định nghĩa CSM = VATBaseAmount + LineDiscountAmount (0 với dòng CK). Dùng cột này cho mọi báo cáo doanh thu bán hàng."
+      - name: trade_discount
+        description: "Chiết khấu thương mại (số dương) = −VATBaseAmount của dòng CK; 0 với dòng khác."
 
   - name: fact_csm_service_invoice
     description: Doanh thu dịch vụ theo chứng từ.
