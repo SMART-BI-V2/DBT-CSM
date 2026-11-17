@@ -718,6 +718,11 @@ models:
     columns:
       - name: customer_code
         description: Khách hàng.
+      - name: responsibility_center
+        description: >
+          Trung tâm trách nhiệm (TTTN) của KHÁCH HÀNG theo danh mục hiện tại (dim_csm_customer) — 21 =
+          xuất khẩu. Dùng cho phân quyền theo dòng (như fact_csm_sales). Công nợ quá khứ quy theo TTTN
+          hiện tại của khách; khách không có trong danh mục ⇒ NULL.
       - name: period_from
         description: Ngày đầu tháng.
       - name: period_to

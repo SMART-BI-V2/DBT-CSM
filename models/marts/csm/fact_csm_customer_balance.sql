@@ -28,8 +28,14 @@ bal as (
     sum(al) over (partition by customer_code order by mth rows between unbounded preceding and current row) as bl
   from grid g
 )
+-- [SỬA 11/2026 — phân quyền theo dòng] thêm responsibility_center (TTTN của KHÁCH, lấy từ
+-- dim_csm_customer — cùng cột luật lọc dòng của bảng khách hàng / doanh thu dùng). Trước đây bảng
+-- chỉ có customer_code ⇒ không đặt được luật ⇒ tài khoản Nội địa hỏi "công nợ phải thu" thấy cả
+-- khách xuất khẩu. Công nợ quá khứ quy theo TTTN HIỆN TẠI của khách. KH không có trong danh mục ⇒ NULL
+-- (luật =/NOT IN loại NULL ⇒ chỉ người "xem toàn bộ" thấy; test bên dưới canh số này).
 select
-  CAST(customer_code AS VARCHAR(128)) as customer_code,
+  CAST(bal.customer_code AS VARCHAR(128)) as customer_code,
+  CAST(cu.responsibility_center AS VARCHAR(64)) as responsibility_center,
   mth as period_from,
   CAST(LAST_DAY(mth) AS DATE) as period_to,
   CAST(a AS DECIMAL(18,2)) as amount,
@@ -46,4 +52,5 @@ select
   CAST(greatest(bl, 0) AS DECIMAL(18,2)) as receivable_lcy,
   CAST(greatest(-bl, 0) AS DECIMAL(18,2)) as prepayment_lcy
 from bal
+left join {{ ref('dim_csm_customer') }} cu on cu.customer_code = bal.customer_code
 where has_src or abs(b) >= 0.5 or abs(bl) >= 0.5
