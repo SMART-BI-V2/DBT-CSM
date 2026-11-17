@@ -45,6 +45,7 @@ scripts/dbt_doris.sh build --vars '{csm_source_schema: tmp_src}'   # đọc ngu�
 | Dấu giá thành | `fact_csm_product_cost`: chi phí ÂM như ERP, `qty` dương ⇒ hiển thị chi phí dùng `-SUM(...)`. What-If tự đổi dấu. |
 | Khoản mục Z | 12 khoản theo `costing_title` của ERP: `nvlc vl_phu fuel packing ccpt dien_luc luong bhxh_yt kpcd khcb scl cppx`; tổng = `cost_total_components`. |
 | Doanh thu | `fact_csm_sales.amount` (đã gồm dòng điều chỉnh âm) + `fact_csm_service_invoice.amount`. `doc_type` là mã ERP (0, 5 bán; 12 điều chỉnh), không phải inland/export. |
+| Kế hoạch SX | ERP không ghi xí nghiệp cho kế hoạch ⇒ `fact_csm_production_plan.factory_code` là QUY VỀ từ giá thành cùng SP (cùng tháng → XN có sản lượng lớn nhất; không thì XN gần nhất của SP; không có dấu vết → NULL, ~0,02% giá trị). Kế hoạch đúng nghĩa XN × SP xem `fact_csm_plan_factory_product` (intake KHSX). |
 | Tồn kho / công nợ | Có đủ mọi tháng ⇒ `WHERE period_date = …` ra toàn bộ tồn / dư nợ của tháng đó. |
 | Độ phủ dữ liệu | `meta_csm_data_coverage`: mỗi bảng fact có số từ kỳ nào tới kỳ nào, kỳ cuối đã đủ tháng chưa. Tháng hiện tại là số luỹ kế (đối tác nạp lại nhiều lần/ngày); giá thành, lãi gộp, BOM chỉ có khi tháng đã khoá sổ. |
 | Số tạm | `fact_csm_material`, `fact_csm_fg_inventory`, `fact_csm_production`: `is_provisional = 1` cho tháng chưa khoá sổ (sau tháng có giá thành gần nhất, luôn gồm tháng hiện tại). ERP chưa tính giá trị xuất cho sản xuất ⇒ giá trị tồn tạm bị cao (25/10/2026: NVL 931,65 tỷ so với 639,31 tỷ cuối T9). Báo cáo giá trị tồn: lọc `is_provisional = 0`. |

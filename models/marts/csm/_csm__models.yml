@@ -646,12 +646,18 @@ models:
             columns: [period_date, product_code]
     description: >
       Kế hoạch sản xuất theo sản phẩm × tháng; period_date = ngày đầu tháng. Dòng kế hoạch giảm trừ
-      (mã giả 2900xx) chỉ có giá trị, số lượng = 0.
+      (mã giả 2900xx) chỉ có giá trị, số lượng = 0. ERP không ghi xí nghiệp cho kế hoạch ⇒ factory_code
+      là QUY VỀ (best-effort): theo giá thành cùng SP cùng tháng, thiếu thì XN gần nhất của SP.
     columns:
       - name: period_date
         description: Ngày đầu tháng.
       - name: product_code
         description: Sản phẩm.
+      - name: factory_code
+        description: >
+          Xí nghiệp quy về từ giá thành (fact_csm_product_cost): cùng tháng lấy XN có sản lượng lớn nhất,
+          tháng chưa có giá thành lấy XN gần nhất của SP; không xác định được thì NULL. Tổng theo XN của
+          cột này ≈ toàn công ty (phủ ~99,99% giá trị kế hoạch), không phải số kế hoạch ERP ghi theo XN.
       - name: qty_plan
         description: Sản lượng sản xuất kế hoạch.
       - name: val_plan
