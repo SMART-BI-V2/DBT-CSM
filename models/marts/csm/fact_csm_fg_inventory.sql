@@ -80,7 +80,7 @@ fin as (
 )
 select
   mth as period_date,
-  CAST(product_code AS VARCHAR(128)) as product_code,
+  CAST(fin.product_code AS VARCHAR(128)) as product_code,
   coalesce(mp.factory_code, ml.factory_code) as factory_code,
   CAST(q_beg AS DECIMAL(18,4)) as qty_begin,   CAST(v_beg AS DECIMAL(18,2)) as val_begin,
   CAST(q_in AS DECIMAL(18,4)) as qty_input,    CAST(v_in AS DECIMAL(18,2)) as val_input,

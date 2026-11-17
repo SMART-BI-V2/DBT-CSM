@@ -35,8 +35,9 @@ bal as (
 -- (luật =/NOT IN loại NULL ⇒ chỉ người "xem toàn bộ" thấy; test bên dưới canh số này).
 select
   CAST(bal.customer_code AS VARCHAR(128)) as customer_code,
-  CAST(cu.responsibility_center AS VARCHAR(64)) as responsibility_center,
   mth as period_from,
+  -- (sau 2 cột khoá: Doris bắt cột khoá duplicate_key đứng đầu, đúng thứ tự)
+  CAST(cu.responsibility_center AS VARCHAR(64)) as responsibility_center,
   CAST(LAST_DAY(mth) AS DATE) as period_to,
   CAST(a AS DECIMAL(18,2)) as amount,
   CAST(d AS DECIMAL(18,2)) as debit_amount,
