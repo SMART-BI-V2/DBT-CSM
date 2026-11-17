@@ -24,6 +24,28 @@ models:
       - name: show_on
         description: Cờ hiển thị trên báo cáo của ERP.
 
+  - name: dim_csm_product_factory
+    tests:
+      - unique_combination:
+          arguments:
+            columns: [product_code, period_from]
+    description: >
+      Map sản phẩm → xí nghiệp quy về từ dấu vết GIÁ THÀNH (fact_csm_product_cost): mỗi SP × kỳ
+      lấy XN có sản lượng lớn nhất. Dùng cho các bảng ERP không ghi mã xí nghiệp (kế hoạch
+      production_planning, nhập–xuất–tồn thành phẩm production_entry). Grain (product_code,
+      period_from); is_latest = 1 cho kỳ gần nhất của SP ⇒ "SP này thuộc XN nào".
+    columns:
+      - name: product_code
+        description: Sản phẩm (mã chuẩn hoá).
+      - name: period_from
+        description: Ngày đầu tháng có dấu vết giá thành.
+      - name: factory_code
+        description: Xí nghiệp có sản lượng lớn nhất của SP trong tháng đó.
+      - name: qty
+        description: Sản lượng giá thành của SP ở XN đó trong tháng.
+      - name: is_latest
+        description: 1 = kỳ gần nhất của SP (xí nghiệp hiện tại).
+
   - name: dim_csm_category
     description: Nhóm hàng (item_category).
     columns:
@@ -555,15 +577,21 @@ models:
           arguments:
             columns: [period_date, product_code]
     description: >
-      Nhập – xuất – tồn thành phẩm toàn công ty theo sản phẩm × tháng; period_date = ngày đầu tháng.
+      Nhập – xuất – tồn thành phẩm theo sản phẩm × tháng; period_date = ngày đầu tháng.
       qty_ending = qty_begin + qty_input_total − qty_output_total (đủ mọi tháng cho SP còn tồn).
       Giá trị tồn (val_*) tính theo luồng nhập – xuất, là xấp xỉ: ERP đánh giá lại giá vốn cuối kỳ.
-      Tháng is_provisional = 1 (chưa khoá sổ, gồm tháng hiện tại) là số luỹ kế tạm.
+      Tháng is_provisional = 1 (chưa khoá sổ, gồm tháng hiện tại) là số luỹ kế tạm. ERP không ghi
+      xí nghiệp cho tồn thành phẩm ⇒ factory_code là QUY VỀ (dim_csm_product_factory).
     columns:
       - name: period_date
         description: Ngày đầu tháng.
       - name: product_code
         description: Thành phẩm.
+      - name: factory_code
+        description: >
+          Xí nghiệp quy về từ giá thành (dim_csm_product_factory): cùng tháng lấy XN có sản lượng
+          lớn nhất, tháng chưa có giá thành lấy XN gần nhất của SP; không xác định được thì NULL.
+          Tổng theo XN ≈ toàn công ty, không phải số liệu ERP ghi theo XN.
       - name: qty_begin
         description: Tồn đầu tháng (lượng).
       - name: val_begin
@@ -606,12 +634,17 @@ models:
             columns: [period_date, product_code]
     description: >
       Sản lượng nhập / xuất / tồn thành phẩm theo sản phẩm × tháng — cùng số liệu với
-      fact_csm_fg_inventory (ít cột hơn). Không có factory_code. is_provisional = 1: tháng chưa khoá sổ.
+      fact_csm_fg_inventory (ít cột hơn). factory_code là quy về (dim_csm_product_factory).
+      is_provisional = 1: tháng chưa khoá sổ.
     columns:
       - name: period_date
         description: Ngày đầu tháng.
       - name: product_code
         description: Thành phẩm.
+      - name: factory_code
+        description: >
+          Xí nghiệp quy về từ giá thành (dim_csm_product_factory): cùng tháng lấy XN có sản lượng
+          lớn nhất, tháng chưa có giá thành lấy XN gần nhất của SP; không xác định được thì NULL.
       - name: qty_begin
         description: Tồn đầu tháng (lượng).
       - name: val_begin
@@ -655,7 +688,7 @@ models:
         description: Sản phẩm.
       - name: factory_code
         description: >
-          Xí nghiệp quy về từ giá thành (fact_csm_product_cost): cùng tháng lấy XN có sản lượng lớn nhất,
+          Xí nghiệp quy về từ giá thành (dim_csm_product_factory): cùng tháng lấy XN có sản lượng lớn nhất,
           tháng chưa có giá thành lấy XN gần nhất của SP; không xác định được thì NULL. Tổng theo XN của
           cột này ≈ toàn công ty (phủ ~99,99% giá trị kế hoạch), không phải số kế hoạch ERP ghi theo XN.
       - name: qty_plan

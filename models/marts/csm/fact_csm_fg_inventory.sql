@@ -13,6 +13,8 @@
 --   vốn cuối kỳ; lệch ~16% sau 3 năm) — dùng SL tồn làm chuẩn.
 -- [SỬA] dòng điều chỉnh tiền (|SL| = |giá trị|, vd mã 2930 tháng 12/2025) không tính vào số lượng.
 -- [SỬA 10/2026] is_provisional = 1: tháng chưa khoá sổ (số luỹ kế tạm, giá trị chưa đánh giá lại).
+-- [SỬA 11/2026] thêm factory_code quy về qua dim_csm_product_factory (nguồn production_entry không
+--   có SourceCode): cùng tháng lấy XN có sản lượng giá thành lớn nhất, không thì XN gần nhất của SP.
 with src as (
   select
     `ItemNo` as product_code,
@@ -79,6 +81,7 @@ fin as (
 select
   mth as period_date,
   CAST(product_code AS VARCHAR(128)) as product_code,
+  coalesce(mp.factory_code, ml.factory_code) as factory_code,
   CAST(q_beg AS DECIMAL(18,4)) as qty_begin,   CAST(v_beg AS DECIMAL(18,2)) as val_begin,
   CAST(q_in AS DECIMAL(18,4)) as qty_input,    CAST(v_in AS DECIMAL(18,2)) as val_input,
   CAST(q_out AS DECIMAL(18,4)) as qty_output,  CAST(v_out AS DECIMAL(18,2)) as val_output,
@@ -90,4 +93,9 @@ select
   CAST(case when mth >= p.provisional_from then 1 else 0 end AS TINYINT) as is_provisional
 from fin
 cross join (select {{ csm_provisional_from() }} as provisional_from) p
+left join {{ ref('dim_csm_product_factory') }} mp
+       on mp.product_code = fin.product_code and mp.period_from = fin.mth
+left join (select product_code, factory_code
+           from {{ ref('dim_csm_product_factory') }} where is_latest = 1) ml
+       on ml.product_code = fin.product_code
 where has_src or q_end <> 0 or v_end <> 0 or q_beg <> 0 or v_beg <> 0
